@@ -134,8 +134,58 @@ app.post('/api/login', (req, res) => {
   });
 });
 
+// Route to approve a workshop
+app.put('/api/admin/approve/:id', (req, res) => {
+  const workshopId = req.params.id;
+  const sql = "UPDATE workshops SET status = 'approved' WHERE id = ?";
+  
+  db.query(sql, [workshopId], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Workshop approved successfully!" });
+  });
+});
+
+
+
+// --- NEW ADMIN ROUTES ---
+
+// 1. Get all workshops that are WAITING for approval
+app.get('/api/admin/pending', (req, res) => {
+  const sql = "SELECT * FROM workshops WHERE status = 'pending'";
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("Error fetching pending:", err);
+      return res.status(500).json(err);
+    }
+    res.json(results);
+  });
+});
+
+// 2. Approve a workshop (Change status from pending to approved)
+app.put('/api/admin/approve/:id', (req, res) => {
+  const id = req.params.id;
+  const sql = "UPDATE workshops SET status = 'approved' WHERE id = ?";
+  db.query(sql, [id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Workshop approved!" });
+  });
+});
+
+// 3. Reject/Delete a workshop
+app.delete('/api/workshops/:id', (req, res) => {
+  const id = req.params.id;
+  const sql = "DELETE FROM workshops WHERE id = ?";
+  db.query(sql, [id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Workshop deleted!" });
+  });
+});
+
 // Start the server
 app.listen(5000, () => {
   console.log('Backend server is running on port 5000');
 });
+
+
+
 
