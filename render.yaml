@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: skillup-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    rootDir: Skillup-Backend
+    envVars:
+      - key: NODE_VERSION
+        value: 18.0.0
+      - key: DB_SSL
+        value: "true"
