@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
@@ -7,13 +9,55 @@ app.use(cors());
 app.use(express.json());
 
 const pool = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: 'admin123',
-  database: 'skillup_connect',
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'skillup_connect',
   waitForConnections: true,
   connectionLimit: 10,
 });
+
+const nodemailer = require('nodemailer');
+
+// Configure your email transporter using env variables
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
+
+// Notification endpoint
+app.post('/api/notify', async (req, res) => {
+  const { type, name, email, message } = req.body;
+
+  const subjectMap = {
+    contact: `New Contact Form: ${name}`,
+    program: `New Program Submission: ${name}`,
+    volunteer: `New Volunteer Sign-up: ${name}`,
+  };
+
+  try {
+    await transporter.sendMail({
+      from: `"SkillUp Connect" <${process.env.GMAIL_USER}>`,
+      to: process.env.ADMIN_EMAIL || process.env.GMAIL_USER,
+      subject: subjectMap[type] || 'New Notification',
+      html: `
+        <h2>${subjectMap[type]}</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Details:</strong> ${message}</p>
+      `,
+    });
+
+    res.json({ success: true, message: 'Email sent!' });
+  } catch (error) {
+    console.error('Email error:', error);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
 
 const db = pool.promise();
 
@@ -117,6 +161,21 @@ async function ensureTables() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  const [workshopCreatedAtColumn] = await db.query(`
+    SELECT COUNT(*) AS total
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'workshops'
+      AND COLUMN_NAME = 'created_at'
+  `);
+
+  if (Number(workshopCreatedAtColumn[0]?.total || 0) === 0) {
+    await db.query(`
+      ALTER TABLE workshops
+      ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `);
+  }
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS volunteers (
@@ -380,6 +439,17 @@ app.post('/api/volunteers', async (req, res) => {
   }
 });
 
+app.get('/api/volunteers', async (req, res) => {
+  try {
+    const [results] = await db.query(
+      'SELECT * FROM volunteers ORDER BY created_at DESC, id DESC'
+    );
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/donations', async (req, res) => {
   try {
     const { full_name, email, amount, message } = req.body;
@@ -400,6 +470,17 @@ app.post('/api/donations', async (req, res) => {
   }
 });
 
+app.get('/api/donations', async (req, res) => {
+  try {
+    const [results] = await db.query(
+      'SELECT * FROM donations ORDER BY created_at DESC, id DESC'
+    );
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/contacts', async (req, res) => {
   try {
     const { full_name, email, subject, message } = req.body;
@@ -416,6 +497,32 @@ app.post('/api/contacts', async (req, res) => {
     res.json({ message: 'Message sent successfully!' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to send message.' });
+  }
+});
+
+app.get('/api/contacts', async (req, res) => {
+  try {
+    const [results] = await db.query(
+      'SELECT * FROM contacts ORDER BY created_at DESC, id DESC'
+    );
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/contacts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await db.query('DELETE FROM contacts WHERE id = ?', [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Message not found.' });
+    }
+
+    res.json({ message: 'Message deleted successfully.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete message.' });
   }
 });
 
@@ -471,8 +578,8 @@ async function startServer() {
   try {
     await ensureTables();
     await seedContent();
-    app.listen(5000, () => {
-      console.log('Backend server is running on port 5000');
+    app.listen(process.env.PORT || 5000, () => {
+      console.log(`Backend server is running on port ${process.env.PORT || 5000}`);
     });
   } catch (error) {
     console.error('Failed to start backend:', error);
@@ -481,3 +588,6 @@ async function startServer() {
 }
 
 startServer();
+
+
+
