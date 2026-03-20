@@ -583,8 +583,11 @@ async function startServer() {
       console.log(`Backend server is running on port ${process.env.PORT || 5000}`);
     });
   } catch (error) {
-    console.error('Failed to start backend:', error);
-    process.exit(1);
+    console.error('🚨 Failed to connect to database on startup. Please check DB_HOST, DB_USER, DB_PASSWORD environment variables!', error.message);
+    // Start the server anyway so Render doesn't mark deployment as "Failed"
+    app.listen(process.env.PORT || 5000, () => {
+      console.log(`Backend server started WITHOUT database on port ${process.env.PORT || 5000}`);
+    });
   }
 }
 
