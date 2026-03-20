@@ -1071,8 +1071,8 @@ function App() {
           </div>
           <div className="footer-contact">
             <h4 style={{ color: 'var(--text)', marginBottom: '16px' }}>Get In Touch</h4>
-            <p style={{ color: 'var(--muted)', marginBottom: '8px' }}>Email: shriramsuryavanshi422@gmail.com</p>
-            <p style={{ color: 'var(--muted)' }}>Phone: +91 9657834594</p>
+            <p style={{ color: 'var(--muted)', marginBottom: '8px' }}>Email: adminskilup@gmail.com</p>
+            <p style={{ color: 'var(--muted)' }}>WhatsApp: +91 94217 89605</p>
           </div>
         </div>
         <div className="footer-bottom">
@@ -1086,5 +1086,4 @@ function App() {
 }
 
 export default App;
-
 
