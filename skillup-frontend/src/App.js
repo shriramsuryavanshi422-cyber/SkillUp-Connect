@@ -5,21 +5,34 @@ import { sendNotification } from './utils/notify';
 const API_BASE = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}/api`;
 
 const fetchJson = async (path, options = {}) => {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  });
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), 6000); // 6 second timeout
 
-  const data = await response.json().catch(() => ({}));
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    });
 
-  if (!response.ok) {
-    throw new Error(data.error || data.message || 'Request failed');
+    clearTimeout(id);
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'Request failed');
+    }
+
+    return data;
+  } catch (err) {
+    clearTimeout(id);
+    if (err.name === 'AbortError') {
+      throw new Error('Request timed out. Server or database might be unreachable.');
+    }
+    throw err;
   }
-
-  return data;
 };
 
 const emptyAuth = { email: '', password: '', ngo_name: '' };
@@ -62,6 +75,7 @@ function App() {
   const [view, setView] = useState('home');
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
   const [showRegister, setShowRegister] = useState(false);
+  const [globalError, setGlobalError] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [contactSubmitting, setContactSubmitting] = useState(false);
@@ -139,7 +153,8 @@ function App() {
 
     const loadInitialData = async () => {
       try {
-        await Promise.allSettled([
+        setGlobalError('');
+        const results = await Promise.allSettled([
           fetchApproved(),
           fetchPending(),
           fetchEvents(),
@@ -148,6 +163,11 @@ function App() {
             ? [fetchContactMessages()]
             : []),
         ]);
+
+        const failed = results.filter(r => r.status === 'rejected');
+        if (failed.length > 0) {
+          setGlobalError(failed[0].reason?.message || 'Failed to connect to the server.');
+        }
       } finally {
         setLoading(false);
       }
@@ -469,6 +489,27 @@ function App() {
   ];
 
   if (loading) return <div className="loading">Loading SkillUp Connect...</div>;
+
+  if (globalError) {
+    return (
+      <div className="App">
+        <nav className="navbar">
+          <button className="logo" type="button" onClick={() => window.location.reload()}>
+            SkillUp Connect
+          </button>
+        </nav>
+        <div className="empty-state" style={{ margin: '15vh auto', maxWidth: '600px', textAlign: 'center', border: '1px solid #1f2937', backgroundColor: '#0f172a', padding: '3rem', borderRadius: '12px' }}>
+          <h2 style={{ color: '#ef4444', marginBottom: '1rem' }}>Connection Failed</h2>
+          <p style={{ color: '#94a3b8', fontSize: '1.1rem' }}>{globalError}</p>
+          <p style={{ color: '#64748b', marginTop: '1rem', lineHeight: '1.6' }}>Please double check that your backend server is running and connected to a MySQL database.</p>
+          <button className="submit-btn" style={{ marginTop: '2rem' }} onClick={() => window.location.reload()}>
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       {toast.visible && <div className={`toast ${toast.type}`}>{toast.message}</div>}

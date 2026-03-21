@@ -16,6 +16,7 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'skillup_connect',
   waitForConnections: true,
   connectionLimit: 10,
+  connectTimeout: 5000, // Fail fast if DB is down
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
@@ -62,6 +63,7 @@ app.post('/api/notify', async (req, res) => {
 
 
 const db = pool.promise();
+let dbConnected = false;
 
 const sampleWorkshops = [
   {
@@ -293,6 +295,14 @@ function toNumber(value) {
 
 app.get('/api/health', (req, res) => {
   res.json({ message: 'SkillUp Connect API is running' });
+});
+
+app.use('/api', (req, res, next) => {
+  if (req.path === '/health' || req.path === '/notify') return next();
+  if (!dbConnected) {
+    return res.status(503).json({ error: 'Database is currently unavailable.' });
+  }
+  next();
 });
 
 app.get('/api/workshops', async (req, res) => {
@@ -580,6 +590,7 @@ async function startServer() {
   try {
     await ensureTables();
     await seedContent();
+    dbConnected = true;
     app.listen(process.env.PORT || 5000, () => {
       console.log(`Backend server is running on port ${process.env.PORT || 5000}`);
     });
