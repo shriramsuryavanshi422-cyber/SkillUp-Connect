@@ -16,7 +16,7 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'skillup_connect',
   waitForConnections: true,
   connectionLimit: 10,
-  connectTimeout: 5000, // Fail fast if DB is down
+  connectTimeout: 20000, // Increased to 20s to allow Aiven DB to wake up/connect
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
@@ -586,21 +586,23 @@ app.get('/api/impact-stats', async (req, res) => {
   }
 });
 
-async function startServer() {
+async function initializeDatabase() {
   try {
     await ensureTables();
     await seedContent();
     dbConnected = true;
-    app.listen(process.env.PORT || 5000, () => {
-      console.log(`Backend server is running on port ${process.env.PORT || 5000}`);
-    });
+    console.log('Database initialized successfully.');
   } catch (error) {
-    console.error('🚨 Failed to connect to database on startup. Please check DB_HOST, DB_USER, DB_PASSWORD environment variables!', error.message);
-    // Start the server anyway so Render doesn't mark deployment as "Failed"
-    app.listen(process.env.PORT || 5000, () => {
-      console.log(`Backend server started WITHOUT database on port ${process.env.PORT || 5000}`);
-    });
+    console.error('🚨 Failed to connect to database. Retrying in 10s...', error.message);
+    setTimeout(initializeDatabase, 10000);
   }
+}
+
+async function startServer() {
+  app.listen(process.env.PORT || 5000, () => {
+    console.log(`Backend server is running on port ${process.env.PORT || 5000}`);
+  });
+  initializeDatabase();
 }
 
 startServer();

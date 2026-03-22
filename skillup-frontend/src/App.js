@@ -6,7 +6,7 @@ const API_BASE = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000
 
 const fetchJson = async (path, options = {}) => {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 6000); // 6 second timeout
+  const id = setTimeout(() => controller.abort(), 60000); // 60 second timeout for Render wake-up
 
   try {
     const response = await fetch(`${API_BASE}${path}`, {
