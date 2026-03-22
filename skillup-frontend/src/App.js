@@ -488,7 +488,7 @@ function App() {
     { label: 'Messages Received', value: formatNumber(impactStats.messagesReceived) },
   ];
 
-  if (loading) return <div className="loading">Loading SkillUp Connect...</div>;
+  // Removed blocking full-screen loader to improve perceived performance during cold starts
 
   if (globalError) {
     return (
@@ -631,17 +631,23 @@ function App() {
               <h2>Upcoming Skill Development Workshops.</h2>
             </div>
 
-            <div className="events-grid">
-              {featuredEvents.map((event) => (
-                <article key={event.id} className="event-card">
-                  <span className="category-badge">{event.badge || event.category}</span>
-                  <h3>{event.title}</h3>
-                  <p className="muted-line">{event.location}</p>
-                  <p className="program-date">{formatDate(event.event_date)}</p>
-                  <p>{event.description}</p>
-                </article>
-              ))}
-            </div>
+            {loading && featuredEvents.length === 0 ? (
+              <div className="empty-state">
+                <p>Loading community events...</p>
+              </div>
+            ) : (
+              <div className="events-grid">
+                {featuredEvents.map((event) => (
+                  <article key={event.id} className="event-card">
+                    <span className="category-badge">{event.badge || event.category}</span>
+                    <h3>{event.title}</h3>
+                    <p className="muted-line">{event.location}</p>
+                    <p className="program-date">{formatDate(event.event_date)}</p>
+                    <p>{event.description}</p>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
           <section ref={programsRef} className="section-shell">
@@ -724,8 +730,17 @@ function App() {
               </div>
             ) : (
               <div className="empty-state">
-                <h3>No live programs yet.</h3>
-                <p>Check back later or register as an NGO to post one.</p>
+                {loading ? (
+                  <>
+                    <h3>Loading programs...</h3>
+                    <p>Please wait while we wake up the server.</p>
+                  </>
+                ) : (
+                  <>
+                    <h3>No live programs yet.</h3>
+                    <p>Check back later or register as an NGO to post one.</p>
+                  </>
+                )}
               </div>
             )}
           </section>
