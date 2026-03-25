@@ -103,6 +103,7 @@ function App() {
   const [contactMessages, setContactMessages] = useState([]);
   const [volunteerForm, setVolunteerForm] = useState(emptyVolunteer);
   const [volunteerSubmitting, setVolunteerSubmitting] = useState(false);
+  const [showContactSection, setShowContactSection] = useState(false);
 
   const aboutRef = useRef(null);
   const programsRef = useRef(null);
@@ -514,9 +515,18 @@ function App() {
           <button className="nav-link" type="button" aria-label="Programs" onClick={() => scrollToSection(programsRef)}>
             Programs
           </button>
-
-          <button className="nav-link" type="button" aria-label="Contact us" onClick={() => scrollToSection(contactRef)}>
-            Contact
+          <button 
+            className="nav-link" 
+            style={{ fontWeight: 'bold', color: 'var(--primary)' }} 
+            type="button" 
+            aria-label="Get Involved" 
+            onClick={() => { 
+              setView('home'); 
+              setShowContactSection(true); 
+              window.setTimeout(() => contactRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); 
+            }}
+          >
+            Get Involved
           </button>
           <button className="nav-link" type="button" aria-label="NGO Portal" onClick={() => (isLoggedIn ? setView('home') : setView('login'))}>
             NGO Portal
@@ -706,148 +716,90 @@ function App() {
             )}
           </section>
 
-          <section ref={contactRef} className="section-shell">
-            <div className="section-heading">
-              <span className="section-tag">{isAdmin ? 'Admin Inbox' : 'Get In Touch'}</span>
-              <h2>{isAdmin ? 'Messages from the contact form.' : 'Start a conversation with our team.'}</h2>
-              {isAdmin && <p>These are the transparent communications saved from the public contact form.</p>}
-            </div>
+          {showContactSection && (
+            <>
+              <section ref={contactRef} className="section-shell">
+                <div className="section-heading">
+                  <span className="section-tag">Get In Touch</span>
+                  <h2>Start a conversation with our team.</h2>
+                </div>
 
-            {!isAdmin ? (
-              <form onSubmit={handleContactSubmit} className="modern-form contact-form">
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  value={contactForm.full_name}
-                  onChange={(e) => setContactForm({ ...contactForm, full_name: e.target.value })}
-                  required
-                />
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={contactForm.email}
-                  onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Subject"
-                  value={contactForm.subject}
-                  onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
-                  required
-                />
-                <textarea
-                  placeholder="Message"
-                  value={contactForm.message}
-                  onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                  required
-                />
-                <button type="submit" className="submit-btn" disabled={contactSubmitting} aria-label="Send contact message">
-                  {contactSubmitting ? 'Processing...' : 'Send Message'}
-                </button>
-              </form>
-            ) : contactMessages.length > 0 ? (
-              <div className="contact-inbox">
-                {contactMessages.map((message) => (
-                  <article key={message.id} className="contact-card">
-                    <div className="contact-card-head">
-                      <div>
-                        <h3>{message.subject}</h3>
-                        <p className="muted-line">
-                          {message.full_name} · {message.email}
-                        </p>
-                      </div>
-                      <span className="contact-date">
-                        {formatDate(message.created_at)}
-                      </span>
-                    </div>
-                    <p className="contact-message">{message.message}</p>
-                    {isAdmin && (
-                      <div className="card-actions" style={{ marginTop: '16px' }}>
-                        <button
-                          className="nav-btn"
-                          type="button"
-                          aria-label="Delete message"
-                          onClick={() => deleteContactMessage(message.id)}
-                          style={{ backgroundColor: '#dc2626' }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <h3>No contact messages yet.</h3>
-                <p>New submissions will appear here after visitors send the form.</p>
-              </div>
-            )}
-          </section>
+                <form onSubmit={handleContactSubmit} className="modern-form contact-form">
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={contactForm.full_name}
+                    onChange={(e) => setContactForm({ ...contactForm, full_name: e.target.value })}
+                    required
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={contactForm.email}
+                    onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="Subject"
+                    value={contactForm.subject}
+                    onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
+                    required
+                  />
+                  <textarea
+                    placeholder="Message"
+                    value={contactForm.message}
+                    onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                    required
+                  />
+                  <button type="submit" className="submit-btn" disabled={contactSubmitting} aria-label="Send contact message">
+                    {contactSubmitting ? 'Processing...' : 'Send Message'}
+                  </button>
+                </form>
+              </section>
 
-          <section className="section-shell volunteer-section">
-            <div className="section-heading">
-              <span className="section-tag">Volunteer</span>
-              <h2>Want to Help Us?</h2>
-              <p>Contribute your time, skills, and passion to uplift communities. Sign up and we'll get in touch!</p>
-            </div>
+              <section className="section-shell volunteer-section">
+                <div className="section-heading">
+                  <span className="section-tag">Volunteer</span>
+                  <h2>Want to Help Us?</h2>
+                  <p>Contribute your time, skills, and passion to uplift communities. Sign up and we'll get in touch!</p>
+                </div>
 
-            <form onSubmit={handleVolunteerSubmit} className="modern-form volunteer-form">
-              <input
-                type="text"
-                placeholder="Full Name"
-                value={volunteerForm.full_name}
-                onChange={(e) => setVolunteerForm({ ...volunteerForm, full_name: e.target.value })}
-                required
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={volunteerForm.email}
-                onChange={(e) => setVolunteerForm({ ...volunteerForm, email: e.target.value })}
-                required
-              />
-              <input
-                type="text"
-                placeholder="Skills (e.g. Teaching, Design, Coding)"
-                value={volunteerForm.skills}
-                onChange={(e) => setVolunteerForm({ ...volunteerForm, skills: e.target.value })}
-                required
-              />
-              <textarea
-                placeholder="Why do you want to volunteer?"
-                value={volunteerForm.message}
-                onChange={(e) => setVolunteerForm({ ...volunteerForm, message: e.target.value })}
-                required
-              />
-              <button type="submit" className="submit-btn" disabled={volunteerSubmitting} aria-label="Submit volunteer application">
-                {volunteerSubmitting ? 'Processing...' : 'Sign Up to Volunteer'}
-              </button>
-            </form>
-          </section>
-
-          <section className="section-shell">
-            <div className="section-heading">
-              <span className="section-tag">Impact Stories</span>
-              <h2>Testimonials from Pune Students.</h2>
-            </div>
-
-            <div className="testimonial-grid">
-              {[
-                { name: 'Rahul D.', quote: 'The coding workshop helped me secure an internship at a tech firm in Hinjewadi.', role: 'SY B.Sc Student' },
-                { name: 'Sneha M.', quote: 'I gained practical insights into digital marketing that we never covered in class.', role: 'SY B.Com Student' },
-                { name: 'Aakash P.', quote: 'Connecting with industry experts at the local Pune seminars was a game changer for my career path.', role: 'SY B.A Student' },
-                { name: 'Priya S.', quote: 'A fantastic platform to learn, grow, and contribute back to our vibrant Pune community.', role: 'SY Engineering Student' }
-              ].map((student, index) => (
-                <article key={index} className="testimonial-card">
-                  <p>"{student.quote}"</p>
-                  <h3 style={{ color: 'var(--text)' }}>{student.name}</h3>
-                  <span style={{ color: 'var(--primary)' }}>{student.role}</span>
-                </article>
-              ))}
-            </div>
-          </section>
+                <form onSubmit={handleVolunteerSubmit} className="modern-form volunteer-form">
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={volunteerForm.full_name}
+                    onChange={(e) => setVolunteerForm({ ...volunteerForm, full_name: e.target.value })}
+                    required
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={volunteerForm.email}
+                    onChange={(e) => setVolunteerForm({ ...volunteerForm, email: e.target.value })}
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="Skills (e.g. Teaching, Design, Coding)"
+                    value={volunteerForm.skills}
+                    onChange={(e) => setVolunteerForm({ ...volunteerForm, skills: e.target.value })}
+                    required
+                  />
+                  <textarea
+                    placeholder="Why do you want to volunteer?"
+                    value={volunteerForm.message}
+                    onChange={(e) => setVolunteerForm({ ...volunteerForm, message: e.target.value })}
+                    required
+                  />
+                  <button type="submit" className="submit-btn" disabled={volunteerSubmitting} aria-label="Submit volunteer application">
+                    {volunteerSubmitting ? 'Processing...' : 'Sign Up to Volunteer'}
+                  </button>
+                </form>
+              </section>
+            </>
+          )}
         </div>
       )}
 
@@ -1088,7 +1040,7 @@ function App() {
             <div className="footer-links">
               <button type="button" aria-label="Scroll to About Us" onClick={() => scrollToSection(aboutRef)}>About Us</button>
               <button type="button" aria-label="Scroll to Live Programs" onClick={() => scrollToSection(programsRef)}>Live Programs</button>
-              <button type="button" aria-label="Scroll to Contact Team" onClick={() => scrollToSection(contactRef)}>Contact Team</button>
+              <button type="button" aria-label="Scroll to Contact Team" onClick={() => { setView('home'); setShowContactSection(true); window.setTimeout(() => contactRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}>Get Involved</button>
             </div>
           </div>
           <div className="footer-contact">
