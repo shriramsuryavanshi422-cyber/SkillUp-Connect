@@ -64,7 +64,7 @@ const emptyVolunteer = {
   message: '',
 };
 
-const ADMIN_EMAIL = 'shriramsuryavanshi422@gmail.com';
+const ADMIN_EMAIL = 'adminskilup@gmail.com';
 
 function App() {
   const [workshops, setWorkshops] = useState([]);
@@ -90,9 +90,6 @@ function App() {
   const [isEditing, setIsEditing] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const [sortOrder, setSortOrder] = useState('dateAsc');
   const [savedWorkshops, setSavedWorkshops] = useState(() => {
     try {
       const stored = localStorage.getItem('savedWorkshops');
@@ -463,23 +460,11 @@ function App() {
 
 
   const getVisibleWorkshops = () => {
-    const normalized = searchQuery.trim().toLowerCase();
-
-    const filtered = workshops.filter((workshop) => {
-      const text = `${workshop.title} ${workshop.description} ${workshop.institute_name}`.toLowerCase();
-      const matchesSearch = !normalized || text.includes(normalized);
-      const matchesCategory = categoryFilter === 'All' || workshop.category === categoryFilter;
-      return matchesSearch && matchesCategory;
-    });
-
-    return [...filtered].sort((a, b) => {
+    return [...workshops].sort((a, b) => {
       const aDate = new Date(a.event_date || a.date).getTime();
       const bDate = new Date(b.event_date || b.date).getTime();
-
-      if (sortOrder === 'dateAsc') return aDate - bDate;
-      if (sortOrder === 'dateDesc') return bDate - aDate;
-      return 0;
-    });
+      return bDate - aDate;
+    }).slice(0, 4);
   };
 
   const isAdmin = authData.email === ADMIN_EMAIL;
@@ -494,7 +479,7 @@ function App() {
     return (
       <div className="App">
         <nav className="navbar">
-          <button className="logo" type="button" onClick={() => window.location.reload()}>
+          <button className="logo" type="button" aria-label="SkillUp Connect Logo" onClick={() => window.location.reload()}>
             SkillUp Connect
           </button>
         </nav>
@@ -502,7 +487,7 @@ function App() {
           <h2 style={{ color: '#ef4444', marginBottom: '1rem' }}>Connection Failed</h2>
           <p style={{ color: '#94a3b8', fontSize: '1.1rem' }}>{globalError}</p>
           <p style={{ color: '#64748b', marginTop: '1rem', lineHeight: '1.6' }}>Please double check that your backend server is running and connected to a MySQL database.</p>
-          <button className="submit-btn" style={{ marginTop: '2rem' }} onClick={() => window.location.reload()}>
+          <button className="submit-btn" style={{ marginTop: '2rem' }} aria-label="Retry Connection" onClick={() => window.location.reload()}>
             Retry Connection
           </button>
         </div>
@@ -515,29 +500,29 @@ function App() {
       {toast.visible && <div className={`toast ${toast.type}`}>{toast.message}</div>}
 
       <nav className="navbar">
-        <button className="logo" type="button" onClick={() => setView('home')}>
+        <button className="logo" type="button" aria-label="Go to Home" onClick={() => setView('home')}>
           SkillUp Connect
         </button>
 
         <div className="nav-links">
-          <button className={`nav-link ${view === 'home' ? 'active' : ''}`} type="button" onClick={() => setView('home')}>
+          <button className={`nav-link ${view === 'home' ? 'active' : ''}`} type="button" aria-label="Home page" onClick={() => setView('home')}>
             Home
           </button>
-          <button className="nav-link" type="button" onClick={() => scrollToSection(aboutRef)}>
+          <button className="nav-link" type="button" aria-label="About us" onClick={() => scrollToSection(aboutRef)}>
             About
           </button>
-          <button className="nav-link" type="button" onClick={() => scrollToSection(programsRef)}>
+          <button className="nav-link" type="button" aria-label="Programs" onClick={() => scrollToSection(programsRef)}>
             Programs
           </button>
 
-          <button className="nav-link" type="button" onClick={() => scrollToSection(contactRef)}>
+          <button className="nav-link" type="button" aria-label="Contact us" onClick={() => scrollToSection(contactRef)}>
             Contact
           </button>
-          <button className="nav-link" type="button" onClick={() => (isLoggedIn ? setView('home') : setView('login'))}>
+          <button className="nav-link" type="button" aria-label="NGO Portal" onClick={() => (isLoggedIn ? setView('home') : setView('login'))}>
             NGO Portal
           </button>
           {isLoggedIn && (
-            <button className="nav-link" type="button" onClick={handleLogout}>
+            <button className="nav-link" type="button" aria-label="Logout" onClick={handleLogout}>
               Logout
             </button>
           )}
@@ -549,18 +534,18 @@ function App() {
           <header className="hero-section">
             <div className="hero-copy">
               <span className="eyebrow">Community-led learning platform</span>
-              <h1>Empowering Communities Through Skill Transformation.</h1>
+              <h1>Helping People Learn New Skills.</h1>
               <p>
                 SkillUp Connect bridges the gap between eager learners and expert educators.
                 We provide a robust platform for NGOs to seamlessly publish workshops, foster engagement, and broadcast verifiable community impact.
               </p>
 
               <div className="hero-actions">
-                <button className="submit-btn" type="button" onClick={() => scrollToSection(programsRef)}>
+                <button className="submit-btn" type="button" aria-label="Explore Programs" onClick={() => scrollToSection(programsRef)}>
                   Explore Programs
                 </button>
 
-                <button className="outline-btn" type="button" onClick={() => setView('login')}>
+                <button className="outline-btn" type="button" aria-label="Go to NGO Portal" onClick={() => setView('login')}>
                   NGO Portal
                 </button>
               </div>
@@ -585,10 +570,10 @@ function App() {
 
           <section ref={aboutRef} className="section-shell">
             <div className="section-heading">
-              <span className="section-tag">About Us</span>
-              <h2>Our Mission: Creating a calm, credible space for real impact.</h2>
+              <span className="section-tag">About the Initiative</span>
+              <h2>Why We Started This</h2>
               <p>
-                A trustworthy NGO thrives on a clear mission, visible results, and accessible pathways for contributors. SkillUp Connect architects the digital foundation for authentic social growth.
+                A trustworthy NGO thrives on a clear mission, visible results, and accessible pathways for contributions. SkillUp Connect architects the digital foundation for authentic social growth across Pune.
               </p>
             </div>
 
@@ -606,12 +591,9 @@ function App() {
                 <p>Transparency is foundational to our mission. We showcase verifiable impact metrics and real community feedback to guarantee to our partners that every contribution transforms lives.</p>
               </article>
             </div>
-          </section>
 
-          <section className="section-shell">
-            <div className="section-heading">
-              <span className="section-tag">Impact Metrics</span>
-              <h2>Quantifiable Impact: Showcasing numbers you can trust.</h2>
+            <div className="section-heading" style={{ marginTop: '48px' }}>
+              <h2>What We Have Done So Far</h2>
               <p>Transparency is at the core of our operations. Every published program and engaged community member directly contributes to our active ecosystem.</p>
             </div>
 
@@ -628,7 +610,7 @@ function App() {
           <section className="section-shell">
             <div className="section-heading">
               <span className="section-tag">Community Events</span>
-              <h2>Upcoming Skill Development Workshops.</h2>
+              <h2>Our Recent Classes</h2>
             </div>
 
             {loading && featuredEvents.length === 0 ? (
@@ -653,31 +635,7 @@ function App() {
           <section ref={programsRef} className="section-shell">
             <div className="section-heading">
               <span className="section-tag">Live Programs</span>
-              <h2>Browse approved programs with a clear and simple flow.</h2>
-            </div>
-
-            <div className="filter-row">
-              <input
-                className="filter-input"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by title, NGO, or keywords"
-              />
-
-              <select className="filter-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                {['All', ...Array.from(new Set(workshops.map((workshop) => workshop.category).filter(Boolean)))].map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-
-              <select className="filter-select" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
-                <option value="dateAsc">Oldest to Newest</option>
-                <option value="dateDesc">Newest to Oldest</option>
-              </select>
-
-              {savedWorkshops.length > 0 && <span className="saved-count">{savedWorkshops.length} saved</span>}
+              <h2>Pick a Program to Join</h2>
             </div>
 
             {getVisibleWorkshops().length > 0 ? (
@@ -698,6 +656,7 @@ function App() {
                       <button
                         className="nav-btn"
                         type="button"
+                        aria-label="Save or unsave workshop"
                         onClick={() => toggleSavedWorkshop(workshop.id)}
                         style={{ backgroundColor: savedWorkshops.includes(workshop.id) ? '#d7a52f' : '#157a5f' }}
                       >
@@ -709,6 +668,7 @@ function App() {
                           <button
                             className="nav-btn"
                             type="button"
+                            aria-label="Edit workshop"
                             onClick={() => startEditingWorkshop(workshop)}
                             style={{ backgroundColor: '#2563eb' }}
                           >
@@ -717,6 +677,7 @@ function App() {
                           <button
                             className="nav-btn"
                             type="button"
+                            aria-label="Delete workshop"
                             onClick={() => deleteLiveWorkshop(workshop.id)}
                             style={{ backgroundColor: '#dc2626' }}
                           >
@@ -781,7 +742,7 @@ function App() {
                   onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
                   required
                 />
-                <button type="submit" className="submit-btn" disabled={contactSubmitting}>
+                <button type="submit" className="submit-btn" disabled={contactSubmitting} aria-label="Send contact message">
                   {contactSubmitting ? 'Processing...' : 'Send Message'}
                 </button>
               </form>
@@ -806,6 +767,7 @@ function App() {
                         <button
                           className="nav-btn"
                           type="button"
+                          aria-label="Delete message"
                           onClick={() => deleteContactMessage(message.id)}
                           style={{ backgroundColor: '#dc2626' }}
                         >
@@ -827,7 +789,7 @@ function App() {
           <section className="section-shell volunteer-section">
             <div className="section-heading">
               <span className="section-tag">Volunteer</span>
-              <h2>Join Us as a Volunteer & Make a Difference.</h2>
+              <h2>Want to Help Us?</h2>
               <p>Contribute your time, skills, and passion to uplift communities. Sign up and we'll get in touch!</p>
             </div>
 
@@ -859,7 +821,7 @@ function App() {
                 onChange={(e) => setVolunteerForm({ ...volunteerForm, message: e.target.value })}
                 required
               />
-              <button type="submit" className="submit-btn" disabled={volunteerSubmitting}>
+              <button type="submit" className="submit-btn" disabled={volunteerSubmitting} aria-label="Submit volunteer application">
                 {volunteerSubmitting ? 'Processing...' : 'Sign Up to Volunteer'}
               </button>
             </form>
@@ -867,21 +829,21 @@ function App() {
 
           <section className="section-shell">
             <div className="section-heading">
-              <span className="section-tag">Inspiration</span>
-              <h2>Voices of True Patriots.</h2>
+              <span className="section-tag">Impact Stories</span>
+              <h2>Testimonials from Pune Students.</h2>
             </div>
 
             <div className="testimonial-grid">
               {[
-                { name: 'Swami Vivekananda', quote: 'Arise, awake, and stop not till the goal is reached.', role: 'Spiritual Leader' },
-                { name: 'Subhash Chandra Bose', quote: 'One individual may die for an idea, but that idea will, after his death, incarnate itself in a thousand lives.', role: 'Freedom Fighter' },
-                { name: 'Dr. A.P.J. Abdul Kalam', quote: 'Dream, dream, dream. Dreams transform into thoughts and thoughts result in action.', role: 'Former President of India' },
-                { name: 'Bhagat Singh', quote: 'They may kill me, but they cannot kill my ideas. They can crush my body, but they will not be able to crush my spirit.', role: 'Revolutionary' }
-              ].map((patriot, index) => (
+                { name: 'Rahul D.', quote: 'The coding workshop helped me secure an internship at a tech firm in Hinjewadi.', role: 'SY B.Sc Student' },
+                { name: 'Sneha M.', quote: 'I gained practical insights into digital marketing that we never covered in class.', role: 'SY B.Com Student' },
+                { name: 'Aakash P.', quote: 'Connecting with industry experts at the local Pune seminars was a game changer for my career path.', role: 'SY B.A Student' },
+                { name: 'Priya S.', quote: 'A fantastic platform to learn, grow, and contribute back to our vibrant Pune community.', role: 'SY Engineering Student' }
+              ].map((student, index) => (
                 <article key={index} className="testimonial-card">
-                  <p>"{patriot.quote}"</p>
-                  <h3 style={{ color: 'var(--text)' }}>{patriot.name}</h3>
-                  <span style={{ color: 'var(--primary)' }}>{patriot.role}</span>
+                  <p>"{student.quote}"</p>
+                  <h3 style={{ color: 'var(--text)' }}>{student.name}</h3>
+                  <span style={{ color: 'var(--primary)' }}>{student.role}</span>
                 </article>
               ))}
             </div>
@@ -923,7 +885,7 @@ function App() {
                   required
                 />
 
-                <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                <button type="submit" className="submit-btn" disabled={isSubmitting} aria-label={showRegister ? 'Create account' : 'Login'}>
                   {isSubmitting ? 'Processing...' : showRegister ? 'Create account' : 'Login'}
                 </button>
 
@@ -984,12 +946,13 @@ function App() {
                     required
                   />
                   <div className="button-row">
-                    <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                    <button type="submit" className="submit-btn" disabled={isSubmitting} aria-label="Submit modified program">
                       {isSubmitting ? 'Processing...' : 'Update Program'}
                     </button>
                     <button
                       type="button"
                       className="nav-btn"
+                      aria-label="Cancel editing"
                       style={{ backgroundColor: '#dc2626' }}
                       onClick={cancelEdit}
                     >
@@ -1016,6 +979,7 @@ function App() {
                         <button
                           className="nav-btn"
                           type="button"
+                          aria-label="Approve pending workshop"
                           onClick={() => approveWorkshop(workshop.id)}
                           style={{ backgroundColor: '#16a34a' }}
                         >
@@ -1024,6 +988,7 @@ function App() {
                         <button
                           className="nav-btn"
                           type="button"
+                          aria-label="Reject and delete pending workshop"
                           onClick={() => rejectWorkshop(workshop.id)}
                           style={{ backgroundColor: '#dc2626' }}
                         >
@@ -1090,13 +1055,14 @@ function App() {
                 required
               />
               <div className="button-row">
-                <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                <button type="submit" className="submit-btn" disabled={isSubmitting} aria-label={isEditing ? 'Update Program' : 'Submit program for review'}>
                   {isSubmitting ? 'Processing...' : isEditing ? 'Update Program' : 'Send for Review'}
                 </button>
                 {isEditing && (
                   <button
                     type="button"
                     className="nav-btn"
+                    aria-label="Cancel program submission"
                     style={{ backgroundColor: '#dc2626' }}
                     onClick={cancelEdit}
                   >
@@ -1120,9 +1086,9 @@ function App() {
           <div className="footer-links-section">
             <h4 style={{ color: 'var(--text)', marginBottom: '16px' }}>Quick Links</h4>
             <div className="footer-links">
-              <button type="button" onClick={() => scrollToSection(aboutRef)}>About Us</button>
-              <button type="button" onClick={() => scrollToSection(programsRef)}>Live Programs</button>
-              <button type="button" onClick={() => scrollToSection(contactRef)}>Contact Team</button>
+              <button type="button" aria-label="Scroll to About Us" onClick={() => scrollToSection(aboutRef)}>About Us</button>
+              <button type="button" aria-label="Scroll to Live Programs" onClick={() => scrollToSection(programsRef)}>Live Programs</button>
+              <button type="button" aria-label="Scroll to Contact Team" onClick={() => scrollToSection(contactRef)}>Contact Team</button>
             </div>
           </div>
           <div className="footer-contact">
