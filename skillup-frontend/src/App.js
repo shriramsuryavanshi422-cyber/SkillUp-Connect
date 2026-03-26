@@ -108,6 +108,7 @@ function App() {
   }));
   const [newWorkshop, setNewWorkshop] = useState(emptyWorkshop);
   const [editingWorkshopId, setEditingWorkshopId] = useState(null);
+  const [editingEventId, setEditingEventId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -126,7 +127,7 @@ function App() {
   const [volunteerRequests, setVolunteerRequests] = useState([]);
   const [volunteerForm, setVolunteerForm] = useState(emptyVolunteer);
   const [volunteerSubmitting, setVolunteerSubmitting] = useState(false);
-  const [showContactSection, setShowContactSection] = useState(true);
+  const [showContactSection, setShowContactSection] = useState(false);
 
   const aboutRef = useRef(null);
   const programsRef = useRef(null);
@@ -323,8 +324,46 @@ function App() {
     }
   };
 
+  const deleteEvent = async (id) => {
+    if (!window.confirm('Delete this community event?')) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await fetchJson(`/events/${id}`, { method: 'DELETE' });
+      showToast('Event deleted.', 'success');
+      await fetchEvents();
+    } catch (error) {
+      showToast(error.message || 'Unable to delete event.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const startEditingEvent = (event) => {
+    setEditingEventId(event.id);
+    setEditingWorkshopId(null);
+    setIsEditing(true);
+    setShowEditModal(true);
+
+    const rawDate = event.event_date || '';
+    const formattedDate = rawDate ? rawDate.slice(0, 10) : '';
+
+    setNewWorkshop({
+      title: event.title || '',
+      category: event.category || '',
+      date: formattedDate,
+      location: event.location || '',
+      description: event.description || '',
+      institute_name: event.badge || 'Community Event',
+    });
+  };
+
   const startEditingWorkshop = (workshop) => {
     setEditingWorkshopId(workshop.id);
+    setEditingEventId(null);
     setIsEditing(true);
     setShowEditModal(true);
 
@@ -344,6 +383,7 @@ function App() {
 
   const cancelEdit = () => {
     setEditingWorkshopId(null);
+    setEditingEventId(null);
     setIsEditing(false);
     setShowEditModal(false);
     setNewWorkshop(emptyWorkshop);
@@ -370,36 +410,55 @@ function App() {
     setIsSubmitting(true);
 
     try {
-      const method = isEditing ? 'PUT' : 'POST';
-      const url = isEditing ? `/workshops/${editingWorkshopId}` : '/workshops';
-
       // Capture form data BEFORE resetting
       const submittedWorkshop = { ...newWorkshop };
 
-      await fetchJson(url, {
-        method,
-        body: JSON.stringify(submittedWorkshop),
-      });
+      // If editing a community event, use the events endpoint
+      if (editingEventId) {
+        await fetchJson(`/events/${editingEventId}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            title: submittedWorkshop.title,
+            category: submittedWorkshop.category,
+            event_date: submittedWorkshop.date,
+            location: submittedWorkshop.location,
+            description: submittedWorkshop.description,
+            badge: submittedWorkshop.institute_name,
+          }),
+        });
+        await fetchEvents();
+        showToast('Event updated successfully!', 'success');
+      } else {
+        const method = isEditing ? 'PUT' : 'POST';
+        const url = isEditing ? `/workshops/${editingWorkshopId}` : '/workshops';
 
-      // Send email notification for new program submissions (not edits)
-      if (!isEditing) {
-        try {
-          await sendNotification({
-            type: 'program',
-            name: submittedWorkshop.institute_name,
-            email: authData.email,
-            message: `New program submitted: ${submittedWorkshop.title} — ${submittedWorkshop.description}`,
-          });
-        } catch (_) {
-          // Notification failure should not block the main flow
+        await fetchJson(url, {
+          method,
+          body: JSON.stringify(submittedWorkshop),
+        });
+
+        // Send email notification for new program submissions (not edits)
+        if (!isEditing) {
+          try {
+            await sendNotification({
+              type: 'program',
+              name: submittedWorkshop.institute_name,
+              email: authData.email,
+              message: `New program submitted: ${submittedWorkshop.title} — ${submittedWorkshop.description}`,
+            });
+          } catch (_) {
+            // Notification failure should not block the main flow
+          }
         }
+
+        await Promise.all([fetchPending(), fetchApproved(), fetchImpactStats()]);
+        showToast(isEditing ? 'Program updated successfully!' : 'Submitted! An admin will review it.', 'success');
       }
 
-      await Promise.all([fetchPending(), fetchApproved(), fetchImpactStats()]);
       setNewWorkshop(emptyWorkshop);
-      showToast(isEditing ? 'Program updated successfully!' : 'Submitted! An admin will review it.', 'success');
       setIsEditing(false);
       setEditingWorkshopId(null);
+      setEditingEventId(null);
       setShowEditModal(false);
     } catch (error) {
       showToast(error.message || 'Unable to submit. Please try again.', 'error');
@@ -657,6 +716,29 @@ function App() {
                     <p className="muted-line">{event.location}</p>
                     <p className="program-date">{formatDate(event.event_date)}</p>
                     <p>{event.description}</p>
+
+                    {isAdmin && !String(event.id).startsWith('sample-') && (
+                      <div className="card-actions">
+                        <button
+                          className="nav-btn"
+                          type="button"
+                          aria-label="Edit event"
+                          onClick={() => startEditingEvent(event)}
+                          style={{ backgroundColor: '#2563eb' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="nav-btn"
+                          type="button"
+                          aria-label="Delete event"
+                          onClick={() => deleteEvent(event.id)}
+                          style={{ backgroundColor: '#dc2626' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </article>
                 ))}
               </div>
@@ -883,7 +965,7 @@ function App() {
           {isAdmin && showEditModal && (
             <div className="modal-overlay" onClick={cancelEdit}>
               <div className="modal" onClick={(e) => e.stopPropagation()}>
-                <h3>Edit workshop</h3>
+                <h3>{editingEventId ? 'Edit Event' : 'Edit Program'}</h3>
                 <form onSubmit={handleSubmitWorkshop} className="auth-form">
                   <input
                     type="text"
@@ -1156,7 +1238,7 @@ function App() {
             <div className="footer-links">
               <button type="button" aria-label="Scroll to About Us" onClick={() => scrollToSection(aboutRef)}>About Us</button>
               <button type="button" aria-label="Scroll to Live Programs" onClick={() => scrollToSection(programsRef)}>Live Programs</button>
-              <button type="button" aria-label="Scroll to Contact Team" onClick={() => { setView('home'); setShowContactSection(true); window.setTimeout(() => contactRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}>Get Involved</button>
+              <button type="button" aria-label="Get in Touch" onClick={() => { setView('home'); setShowContactSection(true); window.setTimeout(() => contactRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}>Get in Touch</button>
             </div>
           </div>
           <div className="footer-contact">

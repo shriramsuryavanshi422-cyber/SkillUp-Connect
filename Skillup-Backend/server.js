@@ -564,6 +564,41 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
+app.put('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, category, event_date, location, description, badge } = req.body;
+
+    if (!title || !category || !event_date || !location || !description) {
+      return res.status(400).json({ error: 'All event fields are required.' });
+    }
+
+    await db.query(
+      'UPDATE events SET title = ?, category = ?, event_date = ?, location = ?, description = ?, badge = ? WHERE id = ?',
+      [title, category, event_date, location, description, badge || 'Community Event', id]
+    );
+
+    res.json({ message: 'Event updated successfully!' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update event' });
+  }
+});
+
+app.delete('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await db.query('DELETE FROM events WHERE id = ?', [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+
+    res.json({ message: 'Event deleted successfully!' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete event' });
+  }
+});
+
 app.get('/api/testimonials', async (req, res) => {
   try {
     const [results] = await db.query(
