@@ -459,7 +459,6 @@ function App() {
   const isAdmin = authData.email === ADMIN_EMAIL;
   const impactCards = [
     { label: 'Programs Published', value: formatNumber(impactStats.workshopsPublished) },
-    { label: 'Messages Received', value: formatNumber(impactStats.messagesReceived) },
   ];
 
   // Removed blocking full-screen loader to improve perceived performance during cold starts
@@ -503,19 +502,6 @@ function App() {
           <button className="nav-link" type="button" aria-label="Programs" onClick={() => scrollToSection(programsRef)}>
             Programs
           </button>
-          <button 
-            className="nav-link" 
-            style={{ fontWeight: 'bold', color: 'var(--primary)' }} 
-            type="button" 
-            aria-label="Get Involved" 
-            onClick={() => { 
-              setView('home'); 
-              setShowContactSection(true); 
-              window.setTimeout(() => contactRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); 
-            }}
-          >
-            Get Involved
-          </button>
           <button className="nav-link" type="button" aria-label="NGO Portal" onClick={() => (isLoggedIn ? setView('home') : setView('login'))}>
             NGO Portal
           </button>
@@ -532,10 +518,9 @@ function App() {
           <header className="hero-section">
             <div className="hero-copy">
               <span className="eyebrow">Community-led learning platform</span>
-              <h1>Helping People Learn New Skills.</h1>
+              <h1>Helping People Build a Better Future.</h1>
               <p>
-                SkillUp Connect bridges the gap between eager learners and expert educators.
-                We provide a robust platform for NGOs to seamlessly publish workshops, foster engagement, and broadcast verifiable community impact.
+                SkillUp Connect brings together people who want to learn and NGOs that want to help. We make it easy for you to find workshops, join camps, and gain new skills to improve your life.
               </p>
 
               <div className="hero-actions">
@@ -569,46 +554,25 @@ function App() {
           <section ref={aboutRef} className="section-shell">
             <div className="section-heading">
               <span className="section-tag">About the Initiative</span>
-              <h2>Why We Started This</h2>
+              <h2>Our Goal: A Stronger Community.</h2>
               <p>
-                A trustworthy NGO thrives on a clear mission, visible results, and accessible pathways for contributions. SkillUp Connect architects the digital foundation for authentic social growth across Pune.
+                Many people have talent but don't know where to learn. Foundations like Lighthouse and Madhushram have great programs but need a way to reach you. We created this platform to connect you directly to these opportunities.
               </p>
             </div>
 
-            <div className="info-grid">
-              <article className="info-card">
-                <h3>Community Building</h3>
-                <p>We foster a collaborative environment where individuals grow together, transforming local neighborhoods through shared knowledge, continuous support, and collective ambition.</p>
-              </article>
-              <article className="info-card">
-                <h3>Resource Accessibility</h3>
-                <p>Our platform bridges the gap between eager learners and vital educational tools, providing equitable access to skill-building workshops, expert mentorship, and career paths.</p>
-              </article>
-              <article className="info-card">
-                <h3>Inspiring Trust</h3>
-                <p>Transparency is foundational to our mission. We showcase verifiable impact metrics and real community feedback to guarantee to our partners that every contribution transforms lives.</p>
-              </article>
-            </div>
-
             <div className="section-heading" style={{ marginTop: '48px' }}>
-              <h2>What We Have Done So Far</h2>
-              <p>Transparency is at the core of our operations. Every published program and engaged community member directly contributes to our active ecosystem.</p>
-            </div>
-
-            <div className="stats-grid">
-              {impactCards.map((card) => (
-                <article key={card.label} className="stat-card">
-                  <span>{card.label}</span>
-                  <strong>{card.value}</strong>
-                </article>
-              ))}
+              <h2>Our Success in Numbers.</h2>
+              <p>
+                We are proud to show real results. With over 100 students helped and multiple active programs, we are making a difference every single day.
+              </p>
             </div>
           </section>
 
           <section className="section-shell">
             <div className="section-heading">
               <span className="section-tag">Community Events</span>
-              <h2>Our Recent Classes</h2>
+              <h2>Learn Something New Today.</h2>
+              <p>From Youth Leadership Camps to Career Counseling, we offer a variety of programs to help you grow. Browse our list and pick the one that fits your goals.</p>
             </div>
 
             {loading && featuredEvents.length === 0 ? (
