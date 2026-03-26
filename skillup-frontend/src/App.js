@@ -100,6 +100,7 @@ function App() {
   });
 
   const [contactForm, setContactForm] = useState(emptyContact);
+  // eslint-disable-next-line no-unused-vars
   const [contactMessages, setContactMessages] = useState([]);
   const [volunteerForm, setVolunteerForm] = useState(emptyVolunteer);
   const [volunteerSubmitting, setVolunteerSubmitting] = useState(false);
@@ -428,19 +429,6 @@ function App() {
     }
   };
 
-  const deleteContactMessage = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this message?')) return;
-    setIsSubmitting(true);
-    try {
-      await fetchJson(`/contacts/${id}`, { method: 'DELETE' });
-      showToast('Message deleted.', 'success');
-      await Promise.all([fetchContactMessages(), fetchImpactStats()]);
-    } catch (error) {
-      showToast(error.message || 'Unable to delete message.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const toggleSavedWorkshop = (id) => {
     setSavedWorkshops((prev) => {
