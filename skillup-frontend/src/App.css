@@ -688,6 +688,37 @@ select {
   margin: 28px auto 0;
 }
 
+.admin-dashboard {
+  width: min(1180px, 92vw);
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.admin-panel-card {
+  padding: 22px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.admin-panel-card h2 {
+  margin-top: 0;
+  margin-bottom: 18px;
+  color: var(--primary);
+  font-size: 1.15rem;
+}
+
+.admin-stack {
+  display: grid;
+  gap: 14px;
+}
+
 .contact-inbox {
   display: grid;
   gap: 14px;
@@ -884,6 +915,10 @@ select {
     grid-template-columns: 1fr;
     gap: 28px;
   }
+
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 980px) {
@@ -951,6 +986,11 @@ select {
   .card-actions,
   .button-row {
     justify-content: flex-start;
+  }
+
+  .admin-section,
+  .admin-dashboard {
+    width: min(1180px, 94vw);
   }
 
   .contact-card-head {

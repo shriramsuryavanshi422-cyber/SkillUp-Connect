@@ -60,6 +60,7 @@ const emptyContact = {
 const emptyVolunteer = {
   full_name: '',
   email: '',
+  phone: '',
   skills: '',
   message: '',
 };
@@ -122,12 +123,14 @@ function App() {
   const [contactForm, setContactForm] = useState(emptyContact);
   // eslint-disable-next-line no-unused-vars
   const [contactMessages, setContactMessages] = useState([]);
+  const [volunteerRequests, setVolunteerRequests] = useState([]);
   const [volunteerForm, setVolunteerForm] = useState(emptyVolunteer);
   const [volunteerSubmitting, setVolunteerSubmitting] = useState(false);
-  const [showContactSection, setShowContactSection] = useState(false);
+  const [showContactSection, setShowContactSection] = useState(true);
 
   const aboutRef = useRef(null);
   const programsRef = useRef(null);
+  const adminRef = useRef(null);
   const contactRef = useRef(null);
 
   const showToast = (message, type = 'info', duration = 2800) => {
@@ -165,6 +168,12 @@ function App() {
     return data;
   }, []);
 
+  const fetchVolunteerRequests = useCallback(async () => {
+    const data = await fetchJson('/volunteers');
+    setVolunteerRequests(data);
+    return data;
+  }, []);
+
 
 
   useEffect(() => {
@@ -179,7 +188,7 @@ function App() {
           fetchEvents(),
           fetchImpactStats(),
           ...(savedEmail === ADMIN_EMAIL
-            ? [fetchContactMessages()]
+            ? [fetchContactMessages(), fetchVolunteerRequests()]
             : []),
         ]);
 
@@ -199,6 +208,7 @@ function App() {
     fetchEvents,
     fetchImpactStats,
     fetchPending,
+    fetchVolunteerRequests,
   ]);
 
   useEffect(() => {
@@ -236,7 +246,11 @@ function App() {
         setView('home');
         await fetchPending();
         if (authData.email === ADMIN_EMAIL) {
-          await fetchContactMessages();
+          setShowContactSection(true);
+          await Promise.all([fetchContactMessages(), fetchVolunteerRequests()]);
+          window.setTimeout(() => {
+            adminRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
         }
       } else {
         setShowRegister(false);
@@ -256,6 +270,7 @@ function App() {
     localStorage.removeItem('userEmail');
     setAuthData(emptyAuth);
     setContactMessages([]);
+    setVolunteerRequests([]);
   };
 
   const approveWorkshop = async (id) => {
@@ -437,7 +452,7 @@ function App() {
         type: 'volunteer',
         name: volunteerForm.full_name,
         email: volunteerForm.email,
-        message: `Skills: ${volunteerForm.skills}. ${volunteerForm.message}`,
+        message: `Phone: ${volunteerForm.phone}. Skills: ${volunteerForm.skills}. ${volunteerForm.message}`,
       });
 
       setVolunteerForm(emptyVolunteer);
@@ -446,6 +461,34 @@ function App() {
       showToast(error.message || 'Unable to submit volunteer form.', 'error');
     } finally {
       setVolunteerSubmitting(false);
+    }
+  };
+
+  const deleteContactMessage = async (id) => {
+    if (!window.confirm('Delete this contact message?')) {
+      return;
+    }
+
+    try {
+      await fetchJson(`/contacts/${id}`, { method: 'DELETE' });
+      showToast('Contact message deleted.', 'success');
+      await fetchContactMessages();
+    } catch (error) {
+      showToast(error.message || 'Unable to delete message.', 'error');
+    }
+  };
+
+  const deleteVolunteerRequest = async (id) => {
+    if (!window.confirm('Delete this volunteer request?')) {
+      return;
+    }
+
+    try {
+      await fetchJson(`/volunteers/${id}`, { method: 'DELETE' });
+      showToast('Volunteer request deleted.', 'success');
+      await fetchVolunteerRequests();
+    } catch (error) {
+      showToast(error.message || 'Unable to delete volunteer request.', 'error');
     }
   };
 
@@ -523,6 +566,11 @@ function App() {
           <button className="nav-link" type="button" aria-label="Programs" onClick={() => scrollToSection(programsRef)}>
             Programs
           </button>
+          {isLoggedIn && isAdmin && (
+            <button className="nav-link" type="button" aria-label="Admin Panel" onClick={() => scrollToSection(adminRef)}>
+              Admin Panel
+            </button>
+          )}
           <button className="nav-link" type="button" aria-label="NGO Portal" onClick={() => (isLoggedIn ? setView('home') : setView('login'))}>
             NGO Portal
           </button>
@@ -754,6 +802,13 @@ function App() {
                     required
                   />
                   <input
+                    type="tel"
+                    placeholder="Phone"
+                    value={volunteerForm.phone}
+                    onChange={(e) => setVolunteerForm({ ...volunteerForm, phone: e.target.value })}
+                    required
+                  />
+                  <input
                     type="text"
                     placeholder="Skills (e.g. Teaching, Design, Coding)"
                     value={volunteerForm.skills}
@@ -890,45 +945,133 @@ function App() {
           )}
 
           {isAdmin && (
-            <section className="admin-inbox">
-              <h2>Pending approvals ({pendingWorkshops.length})</h2>
-              {pendingWorkshops.length > 0 ? (
-                <div className="workshop-list">
-                  {pendingWorkshops.map((workshop) => (
-                    <article key={workshop.id} className="program-card approval-card">
-                      <h3>{workshop.title}</h3>
-                      <p>
-                        <strong>NGO:</strong> {workshop.institute_name}
-                      </p>
-                      <div className="card-actions">
-                        <button
-                          className="nav-btn"
-                          type="button"
-                          aria-label="Approve pending workshop"
-                          onClick={() => approveWorkshop(workshop.id)}
-                          style={{ backgroundColor: '#16a34a' }}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          className="nav-btn"
-                          type="button"
-                          aria-label="Reject and delete pending workshop"
-                          onClick={() => rejectWorkshop(workshop.id)}
-                          style={{ backgroundColor: '#dc2626' }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <h3>No pending workshops right now.</h3>
-                  <p>New NGO submissions will appear here for approval.</p>
-                </div>
-              )}
+            <section ref={adminRef} className="admin-section admin-dashboard">
+              <div className="section-heading">
+                <span className="section-tag">Admin Dashboard</span>
+                <h2>Approvals, messages, and volunteer requests.</h2>
+                <p>Everything the admin needs is grouped here so it is easy to find and manage.</p>
+              </div>
+
+              <div className="admin-grid">
+                <section className="admin-panel-card">
+                  <h2>Pending approvals ({pendingWorkshops.length})</h2>
+                  {pendingWorkshops.length > 0 ? (
+                    <div className="admin-stack">
+                      {pendingWorkshops.map((workshop) => (
+                        <article key={workshop.id} className="program-card approval-card">
+                          <h3>{workshop.title}</h3>
+                          <p>
+                            <strong>NGO:</strong> {workshop.institute_name}
+                          </p>
+                          <div className="card-actions">
+                            <button
+                              className="nav-btn"
+                              type="button"
+                              aria-label="Approve pending workshop"
+                              onClick={() => approveWorkshop(workshop.id)}
+                              style={{ backgroundColor: '#16a34a' }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="nav-btn"
+                              type="button"
+                              aria-label="Reject and delete pending workshop"
+                              onClick={() => rejectWorkshop(workshop.id)}
+                              style={{ backgroundColor: '#dc2626' }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-state">
+                      <h3>No pending workshops right now.</h3>
+                      <p>New NGO submissions will appear here for approval.</p>
+                    </div>
+                  )}
+                </section>
+
+                <section className="admin-panel-card">
+                  <h2>Messages ({contactMessages.length})</h2>
+                  {contactMessages.length > 0 ? (
+                    <div className="admin-stack">
+                      {contactMessages.map((message) => (
+                        <article key={message.id} className="contact-card">
+                          <div className="contact-card-head">
+                            <div>
+                              <h3>{message.subject}</h3>
+                              <p className="muted-line">
+                                <strong>{message.full_name}</strong> · {message.email}
+                              </p>
+                            </div>
+                            <span className="contact-date">{formatDate(message.created_at)}</span>
+                          </div>
+                          <p className="contact-message">{message.message}</p>
+                          <div className="card-actions">
+                            <button
+                              className="nav-btn"
+                              type="button"
+                              aria-label="Delete contact message"
+                              onClick={() => deleteContactMessage(message.id)}
+                              style={{ backgroundColor: '#dc2626' }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-state">
+                      <h3>No messages yet.</h3>
+                      <p>Contact submissions will appear here.</p>
+                    </div>
+                  )}
+                </section>
+
+                <section className="admin-panel-card">
+                  <h2>Volunteer requests ({volunteerRequests.length})</h2>
+                  {volunteerRequests.length > 0 ? (
+                    <div className="admin-stack">
+                      {volunteerRequests.map((request) => (
+                        <article key={request.id} className="contact-card">
+                          <div className="contact-card-head">
+                            <div>
+                              <h3>{request.full_name}</h3>
+                              <p className="muted-line">{request.email} · {request.phone}</p>
+                            </div>
+                            <span className="contact-date">{formatDate(request.created_at)}</span>
+                          </div>
+                          <p className="contact-message">
+                            <strong>Skills:</strong> {request.skills}
+                            <br />
+                            {request.message}
+                          </p>
+                          <div className="card-actions">
+                            <button
+                              className="nav-btn"
+                              type="button"
+                              aria-label="Delete volunteer request"
+                              onClick={() => deleteVolunteerRequest(request.id)}
+                              style={{ backgroundColor: '#dc2626' }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-state">
+                      <h3>No volunteer requests yet.</h3>
+                      <p>Volunteer submissions will appear here.</p>
+                    </div>
+                  )}
+                </section>
+              </div>
             </section>
           )}
 

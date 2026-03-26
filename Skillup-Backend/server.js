@@ -462,6 +462,21 @@ app.get('/api/volunteers', async (req, res) => {
   }
 });
 
+app.delete('/api/volunteers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await db.query('DELETE FROM volunteers WHERE id = ?', [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Volunteer request not found.' });
+    }
+
+    res.json({ message: 'Volunteer request deleted successfully.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete volunteer request.' });
+  }
+});
+
 app.post('/api/donations', async (req, res) => {
   try {
     const { full_name, email, amount, message } = req.body;
@@ -606,6 +621,5 @@ async function startServer() {
 }
 
 startServer();
-
 
 
