@@ -65,6 +65,26 @@ const emptyVolunteer = {
 };
 
 const ADMIN_EMAIL = 'adminskilup@gmail.com';
+const sampleCommunityEvents = [
+  {
+    id: 'sample-community-event-1',
+    badge: 'Sample Event',
+    category: 'Community Event',
+    title: 'Digital Skills Starter Camp',
+    location: 'Riverside Community Hall',
+    event_date: '2026-04-12',
+    description: 'A beginner-friendly session covering email, online safety, and basic productivity tools for first-time learners.',
+  },
+  {
+    id: 'sample-community-event-2',
+    badge: 'Sample Event',
+    category: 'Community Event',
+    title: 'Career Confidence Meet-Up',
+    location: 'City Library Auditorium',
+    event_date: '2026-04-20',
+    description: 'An interactive evening with mock interviews, resume tips, and a panel of local mentors sharing practical guidance.',
+  },
+];
 
 function App() {
   const [workshops, setWorkshops] = useState([]);
@@ -457,6 +477,7 @@ function App() {
   };
 
   const isAdmin = authData.email === ADMIN_EMAIL;
+  const communityEvents = [...sampleCommunityEvents, ...featuredEvents];
   const impactCards = [
     { label: 'Programs Published', value: formatNumber(impactStats.workshopsPublished) },
   ];
@@ -551,7 +572,7 @@ function App() {
             </aside>
           </header>
 
-          <section ref={aboutRef} className="section-shell">
+          <section ref={aboutRef} className="section-shell dark-section">
             <div className="section-heading">
               <span className="section-tag">About the Initiative</span>
               <h2>Our Goal: A Stronger Community.</h2>
@@ -568,20 +589,20 @@ function App() {
             </div>
           </section>
 
-          <section className="section-shell">
+          <section className="section-shell dark-section bg-teal">
             <div className="section-heading">
               <span className="section-tag">Community Events</span>
               <h2>Learn Something New Today.</h2>
               <p>From Youth Leadership Camps to Career Counseling, we offer a variety of programs to help you grow. Browse our list and pick the one that fits your goals.</p>
             </div>
 
-            {loading && featuredEvents.length === 0 ? (
+            {loading && communityEvents.length === 0 ? (
               <div className="empty-state">
                 <p>Loading community events...</p>
               </div>
             ) : (
               <div className="events-grid">
-                {featuredEvents.map((event) => (
+                {communityEvents.map((event) => (
                   <article key={event.id} className="event-card">
                     <span className="category-badge">{event.badge || event.category}</span>
                     <h3>{event.title}</h3>
@@ -594,7 +615,7 @@ function App() {
             )}
           </section>
 
-          <section ref={programsRef} className="section-shell">
+          <section ref={programsRef} className="section-shell dark-section bg-blue">
             <div className="section-heading">
               <span className="section-tag">Live Programs</span>
               <h2>Pick a Program to Join</h2>
@@ -670,7 +691,7 @@ function App() {
 
           {showContactSection && (
             <>
-              <section ref={contactRef} className="section-shell">
+              <section ref={contactRef} className="section-shell dark-section bg-navy">
                 <div className="section-heading">
                   <span className="section-tag">Get In Touch</span>
                   <h2>Start a conversation with our team.</h2>
@@ -710,7 +731,7 @@ function App() {
                 </form>
               </section>
 
-              <section className="section-shell volunteer-section">
+              <section className="section-shell volunteer-section dark-section">
                 <div className="section-heading">
                   <span className="section-tag">Volunteer</span>
                   <h2>Want to Help Us?</h2>
@@ -988,7 +1009,7 @@ function App() {
             </p>
           </div>
           <div className="footer-links-section">
-            <h4 style={{ color: 'var(--text)', marginBottom: '16px' }}>Quick Links</h4>
+            <h4 style={{ marginBottom: '16px' }}>Quick Links</h4>
             <div className="footer-links">
               <button type="button" aria-label="Scroll to About Us" onClick={() => scrollToSection(aboutRef)}>About Us</button>
               <button type="button" aria-label="Scroll to Live Programs" onClick={() => scrollToSection(programsRef)}>Live Programs</button>
@@ -996,9 +1017,9 @@ function App() {
             </div>
           </div>
           <div className="footer-contact">
-            <h4 style={{ color: 'var(--text)', marginBottom: '16px' }}>Get In Touch</h4>
-            <p style={{ color: 'var(--muted)', marginBottom: '8px' }}>Email: adminskilup@gmail.com</p>
-            <p style={{ color: 'var(--muted)' }}>WhatsApp: +91 94217 89605</p>
+            <h4 style={{ marginBottom: '16px' }}>Get In Touch</h4>
+            <p style={{ marginBottom: '8px' }}>Email: adminskilup@gmail.com</p>
+            <p>WhatsApp: +91 94217 89605</p>
           </div>
         </div>
         <div className="footer-bottom">
@@ -1012,4 +1033,3 @@ function App() {
 }
 
 export default App;
-
