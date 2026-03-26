@@ -620,7 +620,7 @@ function App() {
                         type="button"
                         aria-label="Save or unsave workshop"
                         onClick={() => toggleSavedWorkshop(workshop.id)}
-                        style={{ backgroundColor: savedWorkshops.includes(workshop.id) ? '#d7a52f' : '#157a5f' }}
+                        style={{ backgroundColor: savedWorkshops.includes(workshop.id) ? '#D69E2E' : '#48BB78' }}
                       >
                         {savedWorkshops.includes(workshop.id) ? 'Saved' : 'Save'}
                       </button>

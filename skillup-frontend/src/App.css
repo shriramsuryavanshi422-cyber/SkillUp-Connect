@@ -92,8 +92,8 @@ select {
   flex-wrap: wrap;
   gap: 20px;
   padding: 16px clamp(18px, 4vw, 56px);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
 }
 
 .logo {
@@ -122,9 +122,9 @@ select {
 
 .nav-link {
   border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
   background: transparent;
-  color: var(--muted);
-  border-radius: 999px;
+  color: #1A365D;
   padding: 10px 14px;
   min-height: 44px;
   min-width: 44px;
@@ -133,14 +133,14 @@ select {
   justify-content: center;
   cursor: pointer;
   white-space: nowrap;
-  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .nav-link:hover,
 .nav-link.active {
-  color: var(--primary);
-  background: var(--bg-strong);
-  border-color: var(--border);
+  color: #3182CE;
+  background: transparent;
+  border-bottom: 2px solid #3182CE;
 }
 
 .landing-page {
@@ -156,12 +156,11 @@ select {
   align-items: stretch;
   padding: 36px;
   border-radius: 30px;
-  background-color: var(--primary);
-  color: #ffffff;
-  border: 1px solid var(--primary-2);
+  background: linear-gradient(135deg, #1A365D, #2A4365);
+  color: #FFFFFF;
   overflow: hidden;
   position: relative;
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  border: none;
 }
 
 .hero-section::before,
@@ -201,11 +200,12 @@ select {
   font-size: clamp(2.4rem, 5vw, 4.7rem);
   line-height: 0.96;
   max-width: 12ch;
+  color: #FFFFFF;
 }
 
 .hero-copy p {
   max-width: 62ch;
-  color: rgba(249, 247, 239, 0.9);
+  color: #E2E8F0;
   font-size: 1.02rem;
   line-height: 1.7;
 }
@@ -215,6 +215,11 @@ select {
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 26px;
+}
+
+.hero-actions .submit-btn {
+  background-color: #FFFFFF;
+  color: #1A365D;
 }
 
 .hero-panel {
@@ -277,15 +282,23 @@ select {
   display: block;
   margin-top: 8px;
   font-size: 1.18rem;
-  color: var(--text);
+  color: #38B2AC;
+}
+
+.hero-panel-card, .mini-stat {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+}
+.hero-panel-card p, .mini-stat span, .panel-label {
+  color: #4A5568 !important;
 }
 
 .section-shell {
   margin-top: 34px;
   padding: 30px;
   border-radius: 28px;
-  background: var(--bg-strong);
-  border: 1px solid var(--border);
+  background: #F7FAFC;
+  border: none;
 }
 
 .section-heading {
@@ -295,13 +308,14 @@ select {
 .section-heading h2 {
   margin: 10px 0 10px;
   font-size: clamp(1.7rem, 3vw, 2.6rem);
-  color: var(--primary-2);
+  color: #1A365D;
   line-height: 1.08;
 }
 
-.section-heading p {
+.section-heading p, .section-shell p {
   max-width: 70ch;
   margin: 0;
+  color: #2D3748 !important;
 }
 
 .info-grid,
@@ -385,12 +399,17 @@ select {
   gap: 8px;
   padding: 7px 11px;
   border-radius: 999px;
-  background: rgba(32, 201, 151, 0.15);
-  color: var(--primary);
+  background: #E6FFFA;
+  color: #2C7A7B;
   font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+}
+
+.program-card h3,
+.event-card h3 {
+  color: #1A365D !important;
 }
 
 .program-date {
@@ -725,13 +744,14 @@ select {
 
 .professional-footer {
   width: min(1180px, 92vw);
-  margin: 40px auto 20px;
-  padding: 24px 28px;
-  border-radius: 20px;
-  background: var(--surface);
+  margin: 20px auto 10px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: #FFFFFF;
+  border-top: 2px solid #F7FAFC;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 .footer-content {
@@ -754,7 +774,7 @@ select {
 .footer-links button {
   border: none;
   background: transparent;
-  color: var(--text);
+  color: #718096;
   padding: 10px 0;
   min-height: 44px;
   display: flex;
@@ -772,6 +792,7 @@ select {
 .footer-contact p {
   margin: 0;
   font-size: 0.95rem;
+  color: #718096;
 }
 
 .footer-bottom {
