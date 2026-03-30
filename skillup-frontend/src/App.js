@@ -69,7 +69,7 @@ const ADMIN_EMAIL = 'adminskilup@gmail.com';
 const sampleCommunityEvents = [
   {
     id: 'sample-community-event-1',
-    badge: 'Sample Event',
+    badge: 'Upcoming Event',
     category: 'Community Event',
     title: 'Digital Skills Starter Camp',
     location: 'Riverside Community Hall',
@@ -78,12 +78,58 @@ const sampleCommunityEvents = [
   },
   {
     id: 'sample-community-event-2',
-    badge: 'Sample Event',
+    badge: 'Networking',
     category: 'Community Event',
     title: 'Career Confidence Meet-Up',
     location: 'City Library Auditorium',
     event_date: '2026-04-20',
     description: 'An interactive evening with mock interviews, resume tips, and a panel of local mentors sharing practical guidance.',
+  },
+  {
+    id: 'sample-community-event-3',
+    badge: 'Featured Event',
+    category: 'Community Event',
+    title: 'Youth Leadership Camp',
+    location: 'Green Park Auditorium',
+    event_date: '2026-04-18',
+    description: 'A weekend program designed to help students build confidence, public speaking skills, and team leadership.',
+  },
+  {
+    id: 'sample-community-event-4',
+    badge: 'Tech Workshop',
+    category: 'Community Event',
+    title: 'Web Development Bootcamp',
+    location: 'Tech Hub Center',
+    event_date: '2026-05-10',
+    description: 'A hands-on bootcamp teaching HTML, CSS, and basic JavaScript for aspiring web developers.',
+  },
+  {
+    id: 'sample-community-event-5',
+    badge: 'Career Fair',
+    category: 'Community Event',
+    title: 'Local Job & Internship Fair',
+    location: 'Downtown Convention Center',
+    event_date: '2026-05-22',
+    description: 'Connect with local businesses and organizations looking to hire interns and entry-level professionals.',
+  },
+];
+
+const sampleLivePrograms = [
+  {
+    id: 'sample-live-program-1',
+    category: 'Design',
+    title: 'UI/UX Basics for Beginners',
+    institute_name: 'Creative Minds Institute',
+    date: '2026-06-15',
+    description: 'Learn the fundamentals of user interface and user experience design in this interactive live session.',
+  },
+  {
+    id: 'sample-live-program-2',
+    category: 'Business',
+    title: 'Entrepreneurship 101',
+    institute_name: 'Startup Garage',
+    date: '2026-06-25',
+    description: 'Discover the steps to start your own business, from idea generation to securing initial funding.',
   },
 ];
 
@@ -571,7 +617,7 @@ function App() {
 
 
   const getVisibleWorkshops = () => {
-    return [...workshops].sort((a, b) => {
+    return [...sampleLivePrograms, ...workshops].sort((a, b) => {
       const aDate = new Date(a.event_date || a.date).getTime();
       const bDate = new Date(b.event_date || b.date).getTime();
       return bDate - aDate;
@@ -1258,3 +1304,4 @@ function App() {
 }
 
 export default App;
+
