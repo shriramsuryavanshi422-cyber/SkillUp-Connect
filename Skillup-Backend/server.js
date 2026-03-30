@@ -74,6 +74,7 @@ const sampleWorkshops = [
     description: 'Hands-on training for first-time computer users and students who want to build basic digital confidence.',
     institute_name: 'Bright Future Foundation',
     status: 'approved',
+    contact_no: '+91 9876543210'
   },
   {
     title: 'Career Readiness Bootcamp',
@@ -83,6 +84,7 @@ const sampleWorkshops = [
     description: 'Resume reviews, interview practice, and mentor sessions for young job seekers.',
     institute_name: 'Youth Thrive Trust',
     status: 'approved',
+    contact_no: '+91 8765432109'
   },
   {
     title: 'Community Health Awareness Drive',
@@ -92,34 +94,76 @@ const sampleWorkshops = [
     description: 'A public workshop focused on hygiene, prevention, and simple wellness habits for families.',
     institute_name: 'HealthBridge NGO',
     status: 'approved',
+    contact_no: '+91 7654321098'
   },
+  {
+    title: 'UI/UX Basics for Beginners',
+    category: 'Design',
+    event_date: '2026-06-15',
+    location: 'Online',
+    description: 'Learn the fundamentals of user interface and user experience design in this interactive live session.',
+    institute_name: 'Creative Minds Institute',
+    status: 'approved',
+    contact_no: '+91 6543210987'
+  },
+  {
+    title: 'Entrepreneurship 101',
+    category: 'Business',
+    event_date: '2026-06-25',
+    location: 'Online',
+    description: 'Discover the steps to start your own business, from idea generation to securing initial funding.',
+    institute_name: 'Startup Garage',
+    status: 'approved',
+    contact_no: '+91 5432109876'
+  }
 ];
 
 const sampleEvents = [
   {
     title: 'Youth Leadership Camp',
-    category: 'Leadership',
+    category: 'Community Event',
     event_date: '2026-04-18',
     location: 'Green Park Auditorium',
     description: 'A weekend program designed to help students build confidence, public speaking skills, and team leadership.',
     badge: 'Featured Event',
+    contact_no: '+91 9988776655'
   },
   {
-    title: 'Women Entrepreneurship Circle',
-    category: 'Livelihood',
-    event_date: '2026-04-24',
-    location: 'City Innovation Hub',
-    description: 'Community discussions, startup guidance, and mentorship for women-led micro businesses.',
-    badge: 'Community Event',
+    title: 'Digital Skills Starter Camp',
+    category: 'Community Event',
+    event_date: '2026-04-12',
+    location: 'Riverside Community Hall',
+    description: 'A beginner-friendly session covering email, online safety, and basic productivity tools for first-time learners.',
+    badge: 'Upcoming Event',
+    contact_no: '+91 8877665544'
   },
   {
-    title: 'Free Career Counseling Day',
-    category: 'Education',
-    event_date: '2026-05-02',
-    location: 'NGO Resource Center',
-    description: 'One-on-one support for students planning higher education, courses, and first jobs.',
-    badge: 'Open House',
+    title: 'Career Confidence Meet-Up',
+    category: 'Community Event',
+    event_date: '2026-04-20',
+    location: 'City Library Auditorium',
+    description: 'An interactive evening with mock interviews, resume tips, and a panel of local mentors sharing practical guidance.',
+    badge: 'Networking',
+    contact_no: '+91 7766554433'
   },
+  {
+    title: 'Web Development Bootcamp',
+    category: 'Community Event',
+    event_date: '2026-05-10',
+    location: 'Tech Hub Center',
+    description: 'A hands-on bootcamp teaching HTML, CSS, and basic JavaScript for aspiring web developers.',
+    badge: 'Tech Workshop',
+    contact_no: '+91 6655443322'
+  },
+  {
+    title: 'Local Job & Internship Fair',
+    category: 'Community Event',
+    event_date: '2026-05-22',
+    location: 'Downtown Convention Center',
+    description: 'Connect with local businesses and organizations looking to hire interns and entry-level professionals.',
+    badge: 'Career Fair',
+    contact_no: '+91 5544332211'
+  }
 ];
 
 const sampleTestimonials = [
@@ -181,6 +225,21 @@ async function ensureTables() {
     `);
   }
 
+  const [workshopContactColumn] = await db.query(`
+    SELECT COUNT(*) AS total
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'workshops'
+      AND COLUMN_NAME = 'contact_no'
+  `);
+
+  if (Number(workshopContactColumn[0]?.total || 0) === 0) {
+    await db.query(`
+      ALTER TABLE workshops
+      ADD COLUMN contact_no VARCHAR(50) DEFAULT ''
+    `);
+  }
+
   await db.query(`
     CREATE TABLE IF NOT EXISTS volunteers (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -237,6 +296,25 @@ async function ensureTables() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  const [eventContactColumn] = await db.query(`
+    SELECT COUNT(*) AS total
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'events'
+      AND COLUMN_NAME = 'contact_no'
+  `);
+
+  if (Number(eventContactColumn[0]?.total || 0) === 0) {
+    await db.query(`
+      ALTER TABLE events
+      ADD COLUMN contact_no VARCHAR(50) DEFAULT ''
+    `);
+  }
+
+  // Retroactively fill in a dummy contact number for any older entries created before this column existed
+  await db.query("UPDATE events SET contact_no = '+91 9988776655' WHERE contact_no = '' OR contact_no IS NULL");
+  await db.query("UPDATE workshops SET contact_no = '+91 9988776655' WHERE contact_no = '' OR contact_no IS NULL");
 }
 
 async function seedTableIfEmpty(tableName, seedRows, insertSql) {
@@ -260,8 +338,9 @@ async function seedContent() {
       workshop.location,
       workshop.institute_name,
       workshop.status,
+      workshop.contact_no,
     ]),
-    'INSERT INTO workshops (ngo_id, title, description, category, event_date, location, institute_name, status) VALUES ?'
+    'INSERT INTO workshops (ngo_id, title, description, category, event_date, location, institute_name, status, contact_no) VALUES ?'
   );
 
   await seedTableIfEmpty(
@@ -273,8 +352,9 @@ async function seedContent() {
       event.location,
       event.description,
       event.badge,
+      event.contact_no,
     ]),
-    'INSERT INTO events (title, category, event_date, location, description, badge) VALUES ?'
+    'INSERT INTO events (title, category, event_date, location, description, badge, contact_no) VALUES ?'
   );
 
   await seedTableIfEmpty(
@@ -329,15 +409,15 @@ app.get(['/api/admin/pending', '/api/workshops/pending'], async (req, res) => {
 
 app.post('/api/workshops', async (req, res) => {
   try {
-    const { title, category, date, location, description, institute_name } = req.body;
+    const { title, category, date, location, description, institute_name, contact_no } = req.body;
 
     if (!title || !category || !date || !location || !description || !institute_name) {
       return res.status(400).json({ error: 'All workshop fields are required.' });
     }
 
     await db.query(
-      'INSERT INTO workshops (ngo_id, title, description, category, event_date, location, institute_name, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [1, title, description, category, date, location, institute_name, 'pending']
+      'INSERT INTO workshops (ngo_id, title, description, category, event_date, location, institute_name, status, contact_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [1, title, description, category, date, location, institute_name, 'pending', contact_no || '']
     );
 
     res.json({ message: 'Workshop added successfully and is waiting for approval.' });
@@ -349,15 +429,15 @@ app.post('/api/workshops', async (req, res) => {
 app.put('/api/workshops/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, category, date, location, description, institute_name } = req.body;
+    const { title, category, date, location, description, institute_name, contact_no } = req.body;
 
     if (!title || !category || !date || !location || !description || !institute_name) {
       return res.status(400).json({ error: 'All workshop fields are required.' });
     }
 
     await db.query(
-      'UPDATE workshops SET title = ?, category = ?, event_date = ?, location = ?, description = ?, institute_name = ? WHERE id = ?',
-      [title, category, date, location, description, institute_name, id]
+      'UPDATE workshops SET title = ?, category = ?, event_date = ?, location = ?, description = ?, institute_name = ?, contact_no = ? WHERE id = ?',
+      [title, category, date, location, description, institute_name, contact_no || '', id]
     );
 
     res.json({ message: 'Workshop updated successfully!' });
@@ -564,18 +644,37 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
-app.put('/api/events/:id', async (req, res) => {
+app.post('/api/events', async (req, res) => {
   try {
-    const { id } = req.params;
-    const { title, category, event_date, location, description, badge } = req.body;
+    const { title, category, event_date, location, description, badge, contact_no } = req.body;
 
     if (!title || !category || !event_date || !location || !description) {
       return res.status(400).json({ error: 'All event fields are required.' });
     }
 
     await db.query(
-      'UPDATE events SET title = ?, category = ?, event_date = ?, location = ?, description = ?, badge = ? WHERE id = ?',
-      [title, category, event_date, location, description, badge || 'Community Event', id]
+      'INSERT INTO events (title, category, event_date, location, description, badge, contact_no) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [title, category, event_date, location, description, badge || 'Community Event', contact_no || '']
+    );
+
+    res.json({ message: 'Event added successfully.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save event' });
+  }
+});
+
+app.put('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, category, event_date, location, description, badge, contact_no } = req.body;
+
+    if (!title || !category || !event_date || !location || !description) {
+      return res.status(400).json({ error: 'All event fields are required.' });
+    }
+
+    await db.query(
+      'UPDATE events SET title = ?, category = ?, event_date = ?, location = ?, description = ?, badge = ?, contact_no = ? WHERE id = ?',
+      [title, category, event_date, location, description, badge || 'Community Event', contact_no || '', id]
     );
 
     res.json({ message: 'Event updated successfully!' });

@@ -37,12 +37,14 @@ const fetchJson = async (path, options = {}) => {
 
 const emptyAuth = { email: '', password: '', ngo_name: '' };
 const emptyWorkshop = {
+  type: 'workshop',
   title: '',
   category: '',
   date: '',
   location: '',
   description: '',
   institute_name: '',
+  contact_no: '',
 };
 const emptyStats = {
   workshopsPublished: 0,
@@ -66,72 +68,6 @@ const emptyVolunteer = {
 };
 
 const ADMIN_EMAIL = 'adminskilup@gmail.com';
-const sampleCommunityEvents = [
-  {
-    id: 'sample-community-event-1',
-    badge: 'Upcoming Event',
-    category: 'Community Event',
-    title: 'Digital Skills Starter Camp',
-    location: 'Riverside Community Hall',
-    event_date: '2026-04-12',
-    description: 'A beginner-friendly session covering email, online safety, and basic productivity tools for first-time learners.',
-  },
-  {
-    id: 'sample-community-event-2',
-    badge: 'Networking',
-    category: 'Community Event',
-    title: 'Career Confidence Meet-Up',
-    location: 'City Library Auditorium',
-    event_date: '2026-04-20',
-    description: 'An interactive evening with mock interviews, resume tips, and a panel of local mentors sharing practical guidance.',
-  },
-  {
-    id: 'sample-community-event-3',
-    badge: 'Featured Event',
-    category: 'Community Event',
-    title: 'Youth Leadership Camp',
-    location: 'Green Park Auditorium',
-    event_date: '2026-04-18',
-    description: 'A weekend program designed to help students build confidence, public speaking skills, and team leadership.',
-  },
-  {
-    id: 'sample-community-event-4',
-    badge: 'Tech Workshop',
-    category: 'Community Event',
-    title: 'Web Development Bootcamp',
-    location: 'Tech Hub Center',
-    event_date: '2026-05-10',
-    description: 'A hands-on bootcamp teaching HTML, CSS, and basic JavaScript for aspiring web developers.',
-  },
-  {
-    id: 'sample-community-event-5',
-    badge: 'Career Fair',
-    category: 'Community Event',
-    title: 'Local Job & Internship Fair',
-    location: 'Downtown Convention Center',
-    event_date: '2026-05-22',
-    description: 'Connect with local businesses and organizations looking to hire interns and entry-level professionals.',
-  },
-];
-
-const sampleLivePrograms = [
-  {
-    id: 'sample-live-program-1',
-    category: 'Design',
-    title: 'UI/UX Basics for Beginners',
-    institute_name: 'Creative Minds Institute',
-    date: '2026-06-15',
-    description: 'Learn the fundamentals of user interface and user experience design in this interactive live session.',
-  },
-  {
-    id: 'sample-live-program-2',
-    category: 'Business',
-    title: 'Entrepreneurship 101',
-    institute_name: 'Startup Garage',
-    date: '2026-06-25',
-    description: 'Discover the steps to start your own business, from idea generation to securing initial funding.',
-  },
-];
 
 function App() {
   const [workshops, setWorkshops] = useState([]);
@@ -142,6 +78,7 @@ function App() {
   const [view, setView] = useState('home');
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
   const [showRegister, setShowRegister] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [globalError, setGlobalError] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -157,6 +94,7 @@ function App() {
   const [editingEventId, setEditingEventId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   const [savedWorkshops, setSavedWorkshops] = useState(() => {
     try {
@@ -398,12 +336,14 @@ function App() {
     const formattedDate = rawDate ? rawDate.slice(0, 10) : '';
 
     setNewWorkshop({
+      type: 'event',
       title: event.title || '',
       category: event.category || '',
       date: formattedDate,
       location: event.location || '',
       description: event.description || '',
       institute_name: event.badge || 'Community Event',
+      contact_no: event.contact_no || '',
     });
   };
 
@@ -418,12 +358,14 @@ function App() {
     const formattedDate = rawDate ? rawDate.slice(0, 10) : '';
 
     setNewWorkshop({
+      type: 'workshop',
       title: workshop.title || '',
       category: workshop.category || '',
       date: formattedDate,
       location: workshop.location || '',
       description: workshop.description || '',
       institute_name: workshop.institute_name || '',
+      contact_no: workshop.contact_no || '',
     });
   };
 
@@ -456,35 +398,54 @@ function App() {
     setIsSubmitting(true);
 
     try {
-      // Capture form data BEFORE resetting
       const submittedWorkshop = { ...newWorkshop };
 
-      // If editing a community event, use the events endpoint
-      if (editingEventId) {
-        await fetchJson(`/events/${editingEventId}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            title: submittedWorkshop.title,
-            category: submittedWorkshop.category,
-            event_date: submittedWorkshop.date,
-            location: submittedWorkshop.location,
-            description: submittedWorkshop.description,
-            badge: submittedWorkshop.institute_name,
-          }),
-        });
-        await fetchEvents();
-        showToast('Event updated successfully!', 'success');
+      if (isEditing) {
+        if (editingEventId) {
+          await fetchJson(`/events/${editingEventId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              title: submittedWorkshop.title,
+              category: submittedWorkshop.category,
+              event_date: submittedWorkshop.date,
+              location: submittedWorkshop.location,
+              description: submittedWorkshop.description,
+              badge: submittedWorkshop.institute_name,
+              contact_no: submittedWorkshop.contact_no,
+            }),
+          });
+          await fetchEvents();
+          showToast('Event updated successfully!', 'success');
+        } else if (editingWorkshopId) {
+          await fetchJson(`/workshops/${editingWorkshopId}`, {
+            method: 'PUT',
+            body: JSON.stringify(submittedWorkshop),
+          });
+          await Promise.all([fetchPending(), fetchApproved(), fetchImpactStats()]);
+          showToast('Program updated successfully!', 'success');
+        }
       } else {
-        const method = isEditing ? 'PUT' : 'POST';
-        const url = isEditing ? `/workshops/${editingWorkshopId}` : '/workshops';
+        if (submittedWorkshop.type === 'event') {
+          await fetchJson('/events', {
+            method: 'POST',
+            body: JSON.stringify({
+              title: submittedWorkshop.title,
+              category: submittedWorkshop.category,
+              event_date: submittedWorkshop.date,
+              location: submittedWorkshop.location,
+              description: submittedWorkshop.description,
+              badge: submittedWorkshop.institute_name,
+              contact_no: submittedWorkshop.contact_no,
+            }),
+          });
+          await fetchEvents();
+          showToast('Event submitted successfully!', 'success');
+        } else {
+          await fetchJson('/workshops', {
+            method: 'POST',
+            body: JSON.stringify(submittedWorkshop),
+          });
 
-        await fetchJson(url, {
-          method,
-          body: JSON.stringify(submittedWorkshop),
-        });
-
-        // Send email notification for new program submissions (not edits)
-        if (!isEditing) {
           try {
             await sendNotification({
               type: 'program',
@@ -492,13 +453,11 @@ function App() {
               email: authData.email,
               message: `New program submitted: ${submittedWorkshop.title} — ${submittedWorkshop.description}`,
             });
-          } catch (_) {
-            // Notification failure should not block the main flow
-          }
-        }
+          } catch (_) {}
 
-        await Promise.all([fetchPending(), fetchApproved(), fetchImpactStats()]);
-        showToast(isEditing ? 'Program updated successfully!' : 'Submitted! An admin will review it.', 'success');
+          await Promise.all([fetchPending(), fetchApproved(), fetchImpactStats()]);
+          showToast('Submitted! An admin will review it.', 'success');
+        }
       }
 
       setNewWorkshop(emptyWorkshop);
@@ -617,7 +576,7 @@ function App() {
 
 
   const getVisibleWorkshops = () => {
-    return [...sampleLivePrograms, ...workshops].sort((a, b) => {
+    return [...workshops].sort((a, b) => {
       const aDate = new Date(a.event_date || a.date).getTime();
       const bDate = new Date(b.event_date || b.date).getTime();
       return bDate - aDate;
@@ -625,7 +584,7 @@ function App() {
   };
 
   const isAdmin = authData.email === ADMIN_EMAIL;
-  const communityEvents = [...sampleCommunityEvents, ...featuredEvents];
+  const communityEvents = featuredEvents;
   const impactCards = [
     { label: 'Programs Published', value: formatNumber(impactStats.workshopsPublished) },
   ];
@@ -655,6 +614,40 @@ function App() {
   return (
     <div className="App">
       {toast.visible && <div className={`toast ${toast.type}`}>{toast.message}</div>}
+
+      {selectedItem && (
+        <div className="modal-overlay" onClick={() => setSelectedItem(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="category-badge">{selectedItem.badge || selectedItem.category}</span>
+              <button 
+                onClick={() => setSelectedItem(null)} 
+                style={{ background: 'none', border: 'none', fontSize: '1.8rem', cursor: 'pointer', color: 'var(--muted)', lineHeight: '1' }}>
+                &times;
+              </button>
+            </div>
+            <h3 style={{ margin: '16px 0 12px' }}>{selectedItem.title}</h3>
+            
+            <p className="muted-line">
+              <strong>{selectedItem.institute_name || selectedItem.location}</strong>
+            </p>
+            <p className="program-date">
+              <strong>Date:</strong> {formatDate(selectedItem.date || selectedItem.event_date)}
+            </p>
+            {selectedItem.contact_no && (
+              <p className="program-date" style={{ color: 'var(--accent)', marginTop: '4px' }}>
+                <strong>Contact:</strong> {selectedItem.contact_no}
+              </p>
+            )}
+            
+            <div style={{ padding: '16px 0', borderTop: '1px solid var(--border)', marginTop: '16px' }}>
+              <p style={{ lineHeight: '1.7', color: 'var(--text)', whiteSpace: 'pre-wrap', margin: 0 }}>
+                {selectedItem.description}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav className="navbar">
         <button className="logo" type="button" aria-label="Go to Home" onClick={() => setView('home')}>
@@ -756,15 +749,20 @@ function App() {
             ) : (
               <div className="events-grid">
                 {communityEvents.map((event) => (
-                  <article key={event.id} className="event-card">
+                  <article key={event.id} className="event-card clickable-card" onClick={() => setSelectedItem({ ...event, itemType: 'event' })}>
                     <span className="category-badge">{event.badge || event.category}</span>
                     <h3>{event.title}</h3>
                     <p className="muted-line">{event.location}</p>
                     <p className="program-date">{formatDate(event.event_date)}</p>
-                    <p>{event.description}</p>
+                    {event.contact_no && (
+                      <p className="program-date" style={{ color: 'var(--accent)', marginTop: '4px' }}>
+                        <strong>Contact:</strong> {event.contact_no}
+                      </p>
+                    )}
+                    <p className="line-clamp-3" style={{ marginTop: '12px' }}>{event.description}</p>
 
-                    {isAdmin && !String(event.id).startsWith('sample-') && (
-                      <div className="card-actions">
+                    {isAdmin && (
+                      <div className="card-actions" onClick={(e) => e.stopPropagation()}>
                         <button
                           className="nav-btn"
                           type="button"
@@ -800,7 +798,7 @@ function App() {
             {getVisibleWorkshops().length > 0 ? (
               <div className="workshop-list">
                 {getVisibleWorkshops().map((workshop) => (
-                  <article key={workshop.id} className="program-card">
+                  <article key={workshop.id} className="program-card clickable-card" onClick={() => setSelectedItem({ ...workshop, itemType: 'program' })}>
                     <span className="category-badge">{workshop.category}</span>
                     <h3>{workshop.title}</h3>
                     <p className="muted-line">
@@ -809,9 +807,14 @@ function App() {
                     <p className="program-date">
                       <strong>Date:</strong> {formatDate(workshop.date || workshop.event_date)}
                     </p>
-                    <p>{workshop.description}</p>
+                    {workshop.contact_no && (
+                      <p className="program-date" style={{ color: 'var(--accent)', marginTop: '4px' }}>
+                        <strong>Contact:</strong> {workshop.contact_no}
+                      </p>
+                    )}
+                    <p className="line-clamp-3" style={{ marginTop: '12px' }}>{workshop.description}</p>
 
-                    <div className="card-actions">
+                    <div className="card-actions" onClick={(e) => e.stopPropagation()}>
                       <button
                         className="nav-btn"
                         type="button"
@@ -985,13 +988,34 @@ function App() {
                   onChange={(e) => setAuthData({ ...authData, email: e.target.value })}
                   required
                 />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={authData.password}
-                  onChange={(e) => setAuthData({ ...authData, password: e.target.value })}
-                  required
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Password"
+                    value={authData.password}
+                    onChange={(e) => setAuthData({ ...authData, password: e.target.value })}
+                    required
+                    style={{ width: '100%', paddingRight: '45px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '15px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '1.1rem',
+                      padding: 0,
+                    }}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? '🙈' : '👁️'}
+                  </button>
+                </div>
 
                 <button type="submit" className="submit-btn" disabled={isSubmitting} aria-label={showRegister ? 'Create account' : 'Login'}>
                   {isSubmitting ? 'Processing...' : showRegister ? 'Create account' : 'Login'}
@@ -1013,16 +1037,28 @@ function App() {
               <div className="modal" onClick={(e) => e.stopPropagation()}>
                 <h3>{editingEventId ? 'Edit Event' : 'Edit Program'}</h3>
                 <form onSubmit={handleSubmitWorkshop} className="auth-form">
+                  <select
+                    value={newWorkshop.type}
+                    onChange={(e) => setNewWorkshop({ ...newWorkshop, type: e.target.value })}
+                    required
+                    style={{
+                      width: '100%', borderRadius: '16px', border: '1px solid var(--border)',
+                      background: 'var(--bg-strong)', padding: '13px 15px', color: 'var(--text)'
+                    }}
+                  >
+                    <option value="workshop">Live Program</option>
+                    <option value="event">Community Event</option>
+                  </select>
                   <input
                     type="text"
-                    placeholder="Program Title"
+                    placeholder="Title"
                     value={newWorkshop.title}
                     onChange={(e) => setNewWorkshop({ ...newWorkshop, title: e.target.value })}
                     required
                   />
                   <input
                     type="text"
-                    placeholder="Institute Name"
+                    placeholder="Institute Name or Organizer"
                     value={newWorkshop.institute_name}
                     onChange={(e) => setNewWorkshop({ ...newWorkshop, institute_name: e.target.value })}
                     required
@@ -1046,6 +1082,12 @@ function App() {
                     value={newWorkshop.location}
                     onChange={(e) => setNewWorkshop({ ...newWorkshop, location: e.target.value })}
                     required
+                  />
+                  <input
+                    type="text"
+                    placeholder="Contact Number"
+                    value={newWorkshop.contact_no}
+                    onChange={(e) => setNewWorkshop({ ...newWorkshop, contact_no: e.target.value })}
                   />
                   <textarea
                     placeholder="Description"
@@ -1210,16 +1252,28 @@ function App() {
               <p>
                 Logged in as: <strong>{authData.email}</strong>
               </p>
+              <select
+                value={newWorkshop.type}
+                onChange={(e) => setNewWorkshop({ ...newWorkshop, type: e.target.value })}
+                required
+                style={{
+                  width: '100%', borderRadius: '16px', border: '1px solid var(--border)',
+                  background: 'var(--bg-strong)', padding: '13px 15px', color: 'var(--text)'
+                }}
+              >
+                <option value="workshop">Live Program</option>
+                <option value="event">Community Event</option>
+              </select>
               <input
                 type="text"
-                placeholder="Program Title"
+                placeholder="Title"
                 value={newWorkshop.title}
                 onChange={(e) => setNewWorkshop({ ...newWorkshop, title: e.target.value })}
                 required
               />
               <input
                 type="text"
-                placeholder="Institute Name"
+                placeholder="Institute Name or Organizer"
                 value={newWorkshop.institute_name}
                 onChange={(e) => setNewWorkshop({ ...newWorkshop, institute_name: e.target.value })}
                 required
@@ -1243,6 +1297,12 @@ function App() {
                 value={newWorkshop.location}
                 onChange={(e) => setNewWorkshop({ ...newWorkshop, location: e.target.value })}
                 required
+              />
+              <input
+                type="text"
+                placeholder="Contact Number"
+                value={newWorkshop.contact_no}
+                onChange={(e) => setNewWorkshop({ ...newWorkshop, contact_no: e.target.value })}
               />
               <textarea
                 placeholder="Description"
