@@ -75,4 +75,4 @@ The system operates on three primary logical entities:
 
 ## 📄 License
 
-This project is developed for educational purposes under the BCA curriculum.
+This project is developed for educational purposes only.
