@@ -185,30 +185,31 @@ const sampleTestimonials = [
 ];
 
 async function ensureTables() {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS ngo_users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      ngo_name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL UNIQUE,
-      password VARCHAR(255) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS workshops (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      ngo_id INT NOT NULL DEFAULT 1,
-      title VARCHAR(255) NOT NULL,
-      description TEXT NOT NULL,
-      category VARCHAR(100) NOT NULL,
-      event_date DATE NOT NULL,
-      location VARCHAR(255) NOT NULL,
-      institute_name VARCHAR(255) NOT NULL,
-      status ENUM('pending', 'approved') NOT NULL DEFAULT 'pending',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+  await Promise.all([
+    db.query(`
+      CREATE TABLE IF NOT EXISTS ngo_users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ngo_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    db.query(`
+      CREATE TABLE IF NOT EXISTS workshops (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ngo_id INT NOT NULL DEFAULT 1,
+        title VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        event_date DATE NOT NULL,
+        location VARCHAR(255) NOT NULL,
+        institute_name VARCHAR(255) NOT NULL,
+        status ENUM('pending', 'approved') NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+  ]);
 
   const [workshopCreatedAtColumn] = await db.query(`
     SELECT COUNT(*) AS total
@@ -240,62 +241,60 @@ async function ensureTables() {
     `);
   }
 
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS volunteers (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      full_name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL,
-      phone VARCHAR(50) NOT NULL,
-      skills VARCHAR(255) NOT NULL,
-      message TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS donations (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      full_name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL,
-      amount DECIMAL(10, 2) NOT NULL,
-      message TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS contacts (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      full_name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL,
-      subject VARCHAR(255) NOT NULL,
-      message TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS events (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      title VARCHAR(255) NOT NULL,
-      category VARCHAR(100) NOT NULL,
-      event_date DATE NOT NULL,
-      location VARCHAR(255) NOT NULL,
-      description TEXT NOT NULL,
-      badge VARCHAR(100) NOT NULL DEFAULT 'Community Event',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS testimonials (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      role VARCHAR(255) NOT NULL,
-      quote TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+  await Promise.all([
+    db.query(`
+      CREATE TABLE IF NOT EXISTS volunteers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        full_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        phone VARCHAR(50) NOT NULL,
+        skills VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    db.query(`
+      CREATE TABLE IF NOT EXISTS donations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        full_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        amount DECIMAL(10, 2) NOT NULL,
+        message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    db.query(`
+      CREATE TABLE IF NOT EXISTS contacts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        full_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        subject VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    db.query(`
+      CREATE TABLE IF NOT EXISTS events (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        event_date DATE NOT NULL,
+        location VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        badge VARCHAR(100) NOT NULL DEFAULT 'Community Event',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    db.query(`
+      CREATE TABLE IF NOT EXISTS testimonials (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        role VARCHAR(255) NOT NULL,
+        quote TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+  ]);
 
   const [eventContactColumn] = await db.query(`
     SELECT COUNT(*) AS total
@@ -377,15 +376,47 @@ app.get('/api/health', (req, res) => {
   res.json({ message: 'SkillUp Connect API is running' });
 });
 
+const routeCache = new Map();
+
+function cacheMiddleware(durationMs) {
+  return (req, res, next) => {
+    if (req.method !== 'GET') return next();
+    
+    const key = req.originalUrl;
+    const cachedResponse = routeCache.get(key);
+    
+    if (cachedResponse && Date.now() < cachedResponse.expiry) {
+      return res.json(cachedResponse.data);
+    }
+    
+    res.originalJson = res.json;
+    res.json = (body) => {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        routeCache.set(key, { data: body, expiry: Date.now() + durationMs });
+      }
+      return res.originalJson(body);
+    };
+    next();
+  };
+}
+
 app.use('/api', (req, res, next) => {
   if (req.path === '/health' || req.path === '/notify') return next();
   if (!dbConnected) {
     return res.status(503).json({ error: 'Database is currently unavailable.' });
   }
+
+  res.on('finish', () => {
+    if (res.statusCode >= 200 && res.statusCode < 300 && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+      routeCache.clear();
+      console.log('Cache cleared due to data mutation');
+    }
+  });
+
   next();
 });
 
-app.get('/api/workshops', async (req, res) => {
+app.get('/api/workshops', cacheMiddleware(300000), async (req, res) => {
   try {
     const [results] = await db.query(
       "SELECT * FROM workshops WHERE status = 'approved' ORDER BY event_date ASC, created_at DESC"
@@ -396,7 +427,7 @@ app.get('/api/workshops', async (req, res) => {
   }
 });
 
-app.get(['/api/admin/pending', '/api/workshops/pending'], async (req, res) => {
+app.get(['/api/admin/pending', '/api/workshops/pending'], cacheMiddleware(300000), async (req, res) => {
   try {
     const [results] = await db.query(
       "SELECT * FROM workshops WHERE status = 'pending' ORDER BY created_at DESC"

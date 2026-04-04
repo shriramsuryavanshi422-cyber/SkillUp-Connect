@@ -580,7 +580,7 @@ function App() {
       const aDate = new Date(a.event_date || a.date).getTime();
       const bDate = new Date(b.event_date || b.date).getTime();
       return bDate - aDate;
-    }).slice(0, 4);
+    });
   };
 
   const isAdmin = authData.email === ADMIN_EMAIL;
