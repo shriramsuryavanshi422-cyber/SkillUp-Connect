@@ -1,5 +1,6 @@
 # SkillUp Connect 🤝
-The platform centralizes youth skill development missions, making it easy for students to discover workshops, join camps, and connect with social causes like the **Lighthouse Foundation** and **Madhushram Foundation**.
+
+The platform centralizes youth skill development missions, making it easy for students to discover workshops, join camps, and connect with social causes like the **Lighthouse Foundation** and **Madhushram**.
 
 ---
 
@@ -41,36 +42,37 @@ SkillUp-Connect/
     └── vercel.json          # Deployment configuration
 ```
 
-##Installation & Setup
-```
-1. Clone the repository
-git clone [https://github.com/shriramsuryavanshi422-cyber/skillup-connect.git](https://github.com/shriramsuryavanshi422-cyber/skillup-connect.git)
+## 🔧 Installation & Setup
+
+### Clone the Repository
+```bash
+git clone https://github.com/shriramsuryavanshi422-cyber/skillup-connect.git
 cd skillup-connect
 ```
 
-##Setup Backend
-```
+### Setup Backend
+```bash
 cd Skillup-Backend
 npm install
 # Configure your .env or server.js with MySQL credentials
 node server.js
 ```
 
-##Setup Frontend
-```
+### Setup Frontend
+```bash
 cd ../skillup-frontend
 npm install
 npm start
 ```
 
-##📊 Database Schema (ER Summary)
--1.The system operates on three primary logical entities:
+## 📊 Database Schema (ER Summary)
 
-2.NGOs: Stores foundation profiles (Lighthouse, Madhushram).
+The system operates on three primary logical entities:
 
--3.Programs: Linked to NGOs via one-to-many relationship.
+1. **NGOs:** Stores foundation profiles (Lighthouse, Madhushram).
+2. **Programs:** Linked to NGOs via one-to-many relationship.
+3. **Inquiries:** Linked to specific programs to track user interest and contact requests.
 
--4.Inquiries: Linked to specific programs to track user interest and contact requests.
+## 📄 License
 
-##📄 License
 This project is developed for educational purposes under the BCA curriculum.
