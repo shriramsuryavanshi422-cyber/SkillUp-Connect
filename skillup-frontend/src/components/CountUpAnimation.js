@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const CountUpAnimation = ({ end, duration = 1400, suffix = '' }) => {
+const CountUpAnimation = ({ end, target, duration = 1400, suffix = '', prefix = '' }) => {
   const [count, setCount] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const elementRef = useRef(null);
+  
+  const finalValue = Number(end ?? target ?? 0);
 
   useEffect(() => {
     const currentElement = elementRef.current;
@@ -33,8 +35,7 @@ const CountUpAnimation = ({ end, duration = 1400, suffix = '' }) => {
       return undefined;
     }
 
-    const targetValue = Number(end || 0);
-    if (!Number.isFinite(targetValue) || targetValue <= 0) {
+    if (!Number.isFinite(finalValue) || finalValue <= 0) {
       setCount(0);
       return undefined;
     }
@@ -46,7 +47,7 @@ const CountUpAnimation = ({ end, duration = 1400, suffix = '' }) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const easedProgress = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.round(targetValue * easedProgress));
+      setCount(Math.round(finalValue * easedProgress));
 
       if (progress < 1) {
         frameId = window.requestAnimationFrame(animate);
@@ -56,10 +57,11 @@ const CountUpAnimation = ({ end, duration = 1400, suffix = '' }) => {
     frameId = window.requestAnimationFrame(animate);
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [duration, end, isVisible]);
+  }, [duration, finalValue, isVisible]);
 
   return (
-    <span ref={elementRef}>
+    <span ref={elementRef} className="count-up-wrapper">
+      {prefix}
       {new Intl.NumberFormat().format(count)}
       {suffix}
     </span>

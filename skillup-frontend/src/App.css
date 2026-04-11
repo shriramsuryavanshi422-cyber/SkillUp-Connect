@@ -876,15 +876,36 @@ a {
 }
 
 .highlight-card.contrast {
-  background: linear-gradient(155deg, #21303c, #18242e);
+  background: linear-gradient(135deg, #fffaf6 0%, #fff0e7 100%);
+  border: 1px solid var(--accent-soft);
 }
 
 .highlight-card.contrast .section-heading h2,
 .highlight-card.contrast .section-heading p,
-.highlight-card.contrast .section-eyebrow,
-.highlight-card.contrast .impact-stat strong,
+.highlight-card.contrast .section-eyebrow {
+  color: var(--headline);
+}
+
+.highlight-card.contrast .impact-stat {
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(219, 91, 63, 0.08);
+  box-shadow: 0 4px 12px rgba(219, 91, 63, 0.04);
+}
+
+.highlight-card.contrast .impact-stat strong {
+  color: var(--accent) !important;
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+}
+
 .highlight-card.contrast .impact-stat span {
-  color: #f7f0e7;
+  color: var(--headline);
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+.count-up-wrapper {
+  color: inherit;
 }
 
 .impact-grid {

@@ -1193,6 +1193,32 @@ function App() {
               ))}
             </div>
           </div>
+
+          <div className="highlight-card contrast">
+            <SectionHeading
+              eyebrow="Our Impact"
+              title="Growing together as a network"
+              description="Real-time transparency of the community growth we've achieved through collaboration."
+            />
+            <div className="impact-grid">
+              <div className="impact-stat">
+                <strong><CountUpAnimation target={impactStats.workshopsPublished} /></strong>
+                <span>Programs Published</span>
+              </div>
+              <div className="impact-stat">
+                <strong><CountUpAnimation target={impactStats.volunteersJoined} /></strong>
+                <span>Active Volunteers</span>
+              </div>
+              <div className="impact-stat">
+                <strong><CountUpAnimation target={impactStats.donationsRaised} prefix="₹" /></strong>
+                <span>Donations Raised</span>
+              </div>
+              <div className="impact-stat">
+                <strong><CountUpAnimation target={impactStats.estimatedLivesTouched} suffix="+" /></strong>
+                <span>Lives Touched</span>
+              </div>
+            </div>
+          </div>
         </section>
       </main>
 
