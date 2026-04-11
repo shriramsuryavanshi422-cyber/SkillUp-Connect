@@ -682,7 +682,6 @@ function App() {
     });
   }, [activeFilter, combinedPrograms, deferredSearchTerm]);
 
-  const featuredPrograms = useMemo(() => filteredPrograms.slice(0, 8), [filteredPrograms]);
   const upcomingEvents = useMemo(() => {
     const futureEvents = events.filter((item) => isFutureOrToday(getProgramDate(item)));
     const padded = [...futureEvents];
@@ -873,54 +872,6 @@ function App() {
     }
   };
 
-  const handleVolunteerSubmit = async (event) => {
-    event.preventDefault();
-    setVolunteerSubmitting(true);
-
-    try {
-      const payload = { ...volunteerForm };
-      await fetchJson('/volunteers', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      try {
-        await sendNotification({
-          type: 'volunteer',
-          name: payload.full_name,
-          email: payload.email,
-          message: `Phone: ${payload.phone}. Skills: ${payload.skills}. ${payload.message}`,
-        });
-      } catch {
-        // Keep the UX successful even when email is disabled locally.
-      }
-
-      setVolunteerForm(emptyVolunteerForm);
-      await refreshPublicData();
-      await refreshAdminData();
-      showToast('Volunteer application received.', 'success');
-    } catch (error) {
-      showToast(error.message, 'error');
-    } finally {
-      setVolunteerSubmitting(false);
-    }
-  };
-
-  const beginEditing = (item, type) => {
-    setEditingTarget({ id: item.id, type });
-    setProgramForm({
-      type,
-      title: item.title || '',
-      category: item.category || '',
-      date: toInputDate(getProgramDate(item)),
-      location: item.location || '',
-      description: item.description || '',
-      institute_name: item.institute_name || item.badge || '',
-      contact_no: item.contact_no || '',
-    });
-    scrollToSection(systemRef);
-  };
-
   const approveItem = async (id, type) => {
     setIsBusy(true);
 
@@ -942,8 +893,6 @@ function App() {
   };
 
   const deleteItem = async (id, type) => {
-    const label = type === 'event' ? 'community event' : 'program';
-
     setIsBusy(true);
 
     try {
@@ -984,14 +933,7 @@ function App() {
     }
   };
 
-  const statusLabel =
-    statusMode === 'database'
-      ? 'Connected to the live database'
-      : statusMode === 'local'
-        ? 'Running in local demo mode'
-        : statusMode === 'offline'
-          ? 'API unavailable'
-          : 'Connecting to local services';
+  // Status label was unused in UI - suppressed to pass linting
 
   const handleContact = async (item) => {
     try {
