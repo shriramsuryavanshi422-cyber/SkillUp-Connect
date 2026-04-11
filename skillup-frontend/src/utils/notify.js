@@ -14,9 +14,10 @@
  */
 
 // Hit the local backend during development, but hit the Vercel API route in production
+const apiBase = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 const NOTIFY_URL = process.env.NODE_ENV === 'production'
   ? '/api/notify'
-  : 'http://localhost:5000/api/notify';
+  : `${apiBase}/api/notify`;
 
 /**
  * @param {{ type: string, name: string, email: string, message: string }} payload

@@ -1,0 +1,158 @@
+{
+  "nextIds": {
+    "ngo_users": 5,
+    "workshops": 27,
+    "volunteers": 3,
+    "donations": 2,
+    "contacts": 13,
+    "events": 4,
+    "testimonials": 4
+  },
+  "ngo_users": [
+    {
+      "id": 1,
+      "ngo_name": "SkillUp Admin",
+      "email": "shriramsuryavanshi422@gmail.com",
+      "password": "admin123",
+      "created_at": "2026-04-01T08:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "ngo_name": "Bright Future Foundation",
+      "email": "partner@brightfuture.org",
+      "password": "partner123",
+      "created_at": "2026-04-02T09:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "ngo_name": "Admin",
+      "email": "adminskilup@gmail.com",
+      "password": "admin123",
+      "created_at": "2026-04-08T14:07:46.017Z"
+    },
+    {
+      "id": 4,
+      "ngo_name": "Naman",
+      "email": "ram@mail.com",
+      "password": "1234",
+      "created_at": "2026-04-11T13:42:08.358Z"
+    }
+  ],
+  "workshops": [
+    {
+      "id": 9,
+      "ngo_id": 1,
+      "title": "Verification Program",
+      "description": "Testing the pending approvals section.",
+      "category": "Verification",
+      "event_date": "2026-05-10",
+      "location": "Verification City",
+      "institute_name": "Verification NGO",
+      "status": "approved",
+      "contact_no": "",
+      "created_at": "2026-04-10T08:38:39.710Z"
+    },
+    {
+      "id": 10,
+      "ngo_id": 1,
+      "title": "Verification Program",
+      "description": "Testing the pending approvals section.",
+      "category": "Verification",
+      "event_date": "2026-05-10",
+      "location": "Verification City",
+      "institute_name": "Verification NGO",
+      "status": "approved",
+      "contact_no": "",
+      "created_at": "2026-04-10T08:38:57.510Z"
+    },
+    {
+      "id": 11,
+      "ngo_id": 1,
+      "title": "Digital Yoga",
+      "description": "Describe\n",
+      "category": "Tecch",
+      "event_date": "2920-02-02",
+      "location": "Nepal",
+      "institute_name": "Vright Future",
+      "status": "pending",
+      "contact_no": "",
+      "created_at": "2026-04-10T12:38:25.862Z"
+    }
+  ],
+  "volunteers": [],
+  "donations": [
+    {
+      "id": 1,
+      "full_name": "Local Supporter",
+      "email": "support@example.com",
+      "amount": 12000,
+      "message": "Initial support for student outreach.",
+      "created_at": "2026-04-05T14:10:00.000Z"
+    }
+  ],
+  "contacts": [
+    {
+      "id": 10,
+      "full_name": "Raghav chaddha",
+      "email": "email@address",
+      "subject": "SUbjet",
+      "message": "You messege\n",
+      "created_at": "2026-04-10T13:56:02.634Z"
+    }
+  ],
+  "events": [
+    {
+      "id": 1,
+      "title": "Youth Leadership Camp",
+      "category": "Community Event",
+      "event_date": "2026-05-11",
+      "location": "Green Park Auditorium",
+      "description": "A confidence-building camp with public speaking, teamwork, and leadership coaching.",
+      "badge": "Featured Event",
+      "contact_no": "+91 9988776655",
+      "created_at": "2026-04-03T08:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "title": "Digital Skills Starter Camp",
+      "category": "Community Event",
+      "event_date": "2026-05-20",
+      "location": "Riverside Community Hall",
+      "description": "An easy on-ramp into online safety, search, and productivity tools for first-time learners.",
+      "badge": "Upcoming Event",
+      "contact_no": "+91 8877665544",
+      "created_at": "2026-04-04T07:50:00.000Z"
+    },
+    {
+      "id": 3,
+      "title": "Local Job and Internship Fair",
+      "category": "Community Event",
+      "event_date": "2026-06-05",
+      "location": "Downtown Convention Center",
+      "description": "A public hiring and mentoring meetup connecting local employers with emerging talent.",
+      "badge": "Career Fair",
+      "contact_no": "+91 7766554433",
+      "created_at": "2026-04-06T16:00:00.000Z"
+    }
+  ],
+  "testimonials": [
+    {
+      "id": 1,
+      "name": "Aarav Mehta",
+      "role": "Volunteer Mentor",
+      "quote": "The platform now feels professional enough for real community rollouts, not just a class demo."
+    },
+    {
+      "id": 2,
+      "name": "Priya Sharma",
+      "role": "NGO Program Lead",
+      "quote": "Publishing workshops and managing follow-up is dramatically easier with everything in one dashboard."
+    },
+    {
+      "id": 3,
+      "name": "Sana Khan",
+      "role": "Student Participant",
+      "quote": "The new site feels welcoming, polished, and much easier to trust at first glance."
+    }
+  ]
+}

@@ -1,12 +1,84 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, memo } from 'react';
 import './App.css';
+import CountUpAnimation from './components/CountUpAnimation';
+import SearchFilter from './components/SearchFilter';
 import { sendNotification } from './utils/notify';
 
 const API_BASE = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}/api`;
+const ADMIN_EMAIL = 'adminskilup@gmail.com';
+const DEMO_ADMIN_PASSWORD = 'admin123';
 
-const fetchJson = async (path, options = {}) => {
+const emptyAuth = {
+  ngo_name: '',
+  email: '',
+  password: '',
+};
+
+const emptyProgramForm = {
+  type: 'workshop',
+  title: '',
+  category: '',
+  date: '',
+  location: '',
+  description: '',
+  institute_name: '',
+  contact_no: '',
+};
+
+const emptyContactForm = {
+  full_name: '',
+  email: '',
+  subject: '',
+  message: '',
+};
+
+const emptyVolunteerForm = {
+  full_name: '',
+  email: '',
+  phone: '',
+  skills: '',
+  message: '',
+};
+
+const defaultStats = {
+  workshopsPublished: 0,
+  volunteersJoined: 0,
+  donationsRaised: 0,
+  messagesReceived: 0,
+  estimatedLivesTouched: 0,
+};
+
+const STARTER_PROGRAMS = [
+  { id: 's1', title: 'Full-Stack Web Development', category: 'Technology', event_date: '2026-05-15', location: 'Virtual / Tech Hub', institute_name: 'SkillUp Academy', description: 'Master React, Node, and SQL in this intensive weekend bootcamp designed for career switchers.', status: 'approved' },
+  { id: 's2', title: 'Community Health Awareness', category: 'Health', event_date: '2026-05-22', location: 'Metropolitan Hospital', institute_name: 'Global Health NGO', description: 'Essential first-aid training and preventive health tips for community leaders.', status: 'approved' },
+  { id: 's3', title: 'Financial Literacy 101', category: 'Finance', event_date: '2026-06-05', location: 'Commerce Center', institute_name: 'Future Mint', description: 'Learn the basics of budgeting, saving, and investing for a secure future.', status: 'approved' },
+  { id: 's4', title: 'Creative Writing Workshop', category: 'Arts', event_date: '2026-06-12', location: 'City Library', institute_name: 'Literacy Plus', description: 'Unlock your creative potential and learn the art of storytelling from published authors.', status: 'approved' },
+  { id: 's5', title: 'Digital Marketing Mastery', category: 'Business', event_date: '2026-06-18', location: 'Hybrid / Online', institute_name: 'BizGrowth', description: 'Deep dive into SEO, Social Media, and content strategy for small businesses.', status: 'approved' },
+  { id: 's6', title: 'Renewable Energy Seminar', category: 'Science', event_date: '2026-07-01', location: 'Green Innovation Lab', institute_name: 'EcoWatch', description: 'Exploring the future of Solar and Wind energy in urban environments.', status: 'approved' },
+  { id: 's7', title: 'Leadership & Soft Skills', category: 'Professional', event_date: '2026-07-10', location: 'SkillUp HQ', institute_name: 'Mentor Path', description: 'Hone your delegation, empathy, and strategic thinking for professional growth.', status: 'approved' },
+  { id: 's8', title: 'Mobile App Fundamentals', category: 'Technology', event_date: '2026-07-20', location: 'Online Bootcamp', institute_name: 'AppLogic', description: 'Build your first mobile application using cross-platform tools in 3 days.', status: 'approved' }
+];
+
+const STARTER_EVENTS = [
+  { id: 'e1', title: 'SkillUp Global summit', category: 'Conference', event_date: '2026-08-01', location: 'Main Plaza', badge: 'Featured', description: 'The annual gathering of community leaders, NGOs, and volunteers to share impact stories.' },
+  { id: 'e2', title: 'Youth Tech Expo', category: 'Exhibition', event_date: '2026-08-15', location: 'Science Park', badge: 'Tech', description: 'Showcasing the latest innovative projects built by students in our programs.' },
+  { id: 'e3', title: 'Community Green Day', category: 'Volunteer', event_date: '2026-09-01', location: 'Central Park', badge: 'Environment', description: 'A massive community planting event to beautify our city and combat climate issues.' },
+  { id: 'e4', title: 'Innovation Hackathon', category: 'Coding', event_date: '2026-09-12', location: 'Innovation Lab', badge: 'Hack', description: '48 hours of building solutions for local community challenges.' },
+  { id: 'e5', title: 'Arts & Culture Festival', category: 'Culture', event_date: '2026-09-20', location: 'Riverside Walk', badge: 'Cultural', description: 'Celebrating diversity through music, dance, and local art exhibitions.' },
+  { id: 'e6', title: 'Entrepreneurship Bootcamp', category: 'Business', event_date: '2026-10-05', location: 'Startup Hive', badge: 'Business', description: 'Pitch your ideas and get mentorship from successful startup founders.' },
+  { id: 'e7', title: 'Wellness & Yoga Retreat', category: 'Wellness', event_date: '2026-10-15', location: 'Serenity Gardens', badge: 'Health', description: 'A morning of mindfulness, yoga, and healthy living workshops.' },
+  { id: 'e8', title: 'Digital Literacy Marathon', category: 'Education', event_date: '2026-11-01', location: 'District Schools', badge: 'Education', description: 'Empowering seniors and students with essential digital skills across the city.' }
+];
+
+const PROGRAM_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'workshop', label: 'Programs' },
+  { id: 'event', label: 'Events' },
+];
+
+async function fetchJson(path, options = {}) {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 60000); // 60 second timeout for Render wake-up
+  const timeoutId = window.setTimeout(() => controller.abort(), 15000);
 
   try {
     const response = await fetch(`${API_BASE}${path}`, {
@@ -18,1345 +90,1451 @@ const fetchJson = async (path, options = {}) => {
       },
     });
 
-    clearTimeout(id);
-    const data = await response.json().catch(() => ({}));
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (e) {
+      data = null;
+    }
 
     if (!response.ok) {
-      throw new Error(data.error || data.message || 'Request failed');
+      throw new Error(data?.error || data?.message || 'Request failed');
     }
 
     return data;
-  } catch (err) {
-    clearTimeout(id);
-    if (err.name === 'AbortError') {
-      throw new Error('Request timed out. Server or database might be unreachable.');
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('The request timed out. Please check whether the local API is running.');
     }
-    throw err;
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
-};
+}
 
-const emptyAuth = { email: '', password: '', ngo_name: '' };
-const emptyWorkshop = {
-  type: 'workshop',
-  title: '',
-  category: '',
-  date: '',
-  location: '',
-  description: '',
-  institute_name: '',
-  contact_no: '',
-};
-const emptyStats = {
-  workshopsPublished: 0,
-  messagesReceived: 0,
-  estimatedLivesTouched: 0,
-};
+function formatDate(value) {
+  if (!value) {
+    return 'To be announced';
+  }
 
-const emptyContact = {
-  full_name: '',
-  email: '',
-  subject: '',
-  message: '',
-};
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'To be announced';
+  }
 
-const emptyVolunteer = {
-  full_name: '',
-  email: '',
-  phone: '',
-  skills: '',
-  message: '',
-};
+  return parsed.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
 
-const ADMIN_EMAIL = 'adminskilup@gmail.com';
+function formatCurrency(value) {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat().format(Number(value || 0));
+}
+
+function getProgramDate(item) {
+  return item.event_date || item.date || '';
+}
+
+function getProgramType(item) {
+  return item.type || (item.badge ? 'event' : 'workshop');
+}
+
+function toInputDate(value) {
+  if (!value) {
+    return '';
+  }
+
+  return String(value).slice(0, 10);
+}
+
+function isFutureOrToday(value) {
+  const selectedDate = new Date(value);
+  if (Number.isNaN(selectedDate.getTime())) {
+    return false;
+  }
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return selectedDate.getTime() >= today;
+}
+
+function sortByUpcoming(items) {
+  return [...items].sort((left, right) => new Date(getProgramDate(left)) - new Date(getProgramDate(right)));
+}
+
+const EVERY_ORG_API_KEY = 'pk_live_5b81853be3cf4a431164d767745b376c';
+
+const SectionHeading = memo(({ eyebrow, title, description, align = 'left' }) => {
+  return (
+    <div className={`section-heading ${align === 'center' ? 'centered' : ''}`}>
+      <span className="section-eyebrow">{eyebrow}</span>
+      <h2>{title}</h2>
+      <p>{description}</p>
+    </div>
+  );
+});
+
+const ProgramCard = memo(({ item, type, onOpen, onEdit, onDelete, onApprove, canManage, isPending }) => {
+  const itemType = type || getProgramType(item);
+
+  return (
+    <article
+      className={`program-card ${itemType === 'event' ? 'event-card' : ''}`}
+      onClick={(e) => {
+        if (e.target.closest('.card-actions')) return;
+        onOpen(item, itemType);
+      }}
+      style={{ cursor: 'pointer' }}
+    >
+      <div className="program-card-top">
+        {item.logoUrl && (
+          <div className="card-logo-container">
+            <img src={item.logoUrl} alt={`${item.name || item.title} logo`} className="card-logo" onError={(e) => e.target.style.display = 'none'} />
+          </div>
+        )}
+        <div className="card-header-info">
+          <span className={`program-pill ${itemType}`}>
+            {itemType === 'event' ? 'Community Event' : itemType === 'ngo' ? 'Nonprofit Organization' : 'Live Program'}
+          </span>
+          <h3>{item.title || item.name}</h3>
+          <p className="program-meta">
+            {formatDate(getProgramDate(item))} · {item.location}
+          </p>
+        </div>
+      </div>
+
+      <p className="program-description">
+        {item.description && item.description.length > 100
+          ? item.description.substring(0, 100) + '...'
+          : item.description}
+      </p>
+
+      <div className="program-foot">
+        <div className="card-footer-info">
+          <strong>{item.institute_name || item.badge || 'SkillUp Partner'}</strong>
+          <span>{item.contact_no || 'Contact shared after confirmation'}</span>
+        </div>
+        <button type="button" className="ghost-button">
+          View details
+        </button>
+      </div>
+
+      {canManage && (
+        <div className="card-actions" onClick={(e) => e.stopPropagation()}>
+          {isPending && onApprove && (
+            <button
+              type="button"
+              className="button-primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onApprove(item.id);
+              }}
+            >
+              Approve
+            </button>
+          )}
+          {onEdit && (
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(item, itemType);
+              }}
+            >
+              Edit
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              className="button-danger"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(item.id, itemType);
+              }}
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      )}
+    </article>
+  );
+});
+
+const DetailModal = memo(({ item, onClose, onContact }) => {
+  if (!item) {
+    return null;
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose} role="presentation">
+      <div className="detail-modal redesigned" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="modal-close" aria-label="Close details" onClick={onClose}>
+          ×
+        </button>
+
+        <div className="modal-header">
+          {item.logoUrl && (
+            <div className="modal-logo-container">
+              <img src={item.logoUrl} alt={`${item.name || item.title} logo`} className="modal-logo" onError={(e) => e.target.style.display = 'none'} />
+            </div>
+          )}
+          <div className="modal-title-area">
+            <span className={`program-pill ${item.type}`}>{item.type === 'event' ? 'Community Event' : item.type === 'ngo' ? 'Nonprofit Organization' : 'Live Program'}</span>
+            <h3>{item.title || item.name}</h3>
+            <p className="modal-subtitle">
+              {formatDate(item.event_date || getProgramDate(item))} · {item.location}
+            </p>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="modal-info-grid">
+            <div className="info-box">
+              <span className="info-label">Organization</span>
+              <strong>{item.institute_name || item.name}</strong>
+            </div>
+            <div className="info-box">
+              <span className="info-label">Category</span>
+              <strong>{item.category || 'General'}</strong>
+            </div>
+            <div className="info-box">
+              <span className="info-label">Region</span>
+              <strong>{item.location}</strong>
+            </div>
+            <div className="info-box">
+              <span className="info-label">Availability</span>
+              <strong>{item.type === 'ngo' ? 'Open' : 'Limited Seats'}</strong>
+            </div>
+          </div>
+
+          <div className="modal-description">
+            <h4>About the Program</h4>
+            <p>{item.description || item.mission}</p>
+          </div>
+
+          <div className="modal-actions">
+            {item.profileUrl ? (
+              <a href={item.profileUrl} target="_blank" rel="noopener noreferrer" className="button-primary stretch text-center">
+                Visit Website
+              </a>
+            ) : (
+              <button
+                type="button"
+                className="button-secondary stretch"
+                onClick={() => {
+                  window.open('https://every.org/search/' + (item.title || item.name || 'skillup'), '_blank');
+                }}
+              >
+                Visit Website (Every.org)
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const ContactModal = memo(({ isOpen, onClose, formData, setFormData, onSubmit, isSubmitting }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose} role="presentation">
+      <div className="auth-modal contact-modal" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="modal-close" onClick={onClose}>×</button>
+        <div className="auth-copy">
+          <h3>Get in Touch</h3>
+          <p>Send a message to the SkillUp team and we'll get back to you shortly.</p>
+        </div>
+        <form className="auth-form" onSubmit={onSubmit}>
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={formData.full_name}
+            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+            required
+          />
+          <input
+            type="email"
+            placeholder="Email Address"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            required
+          />
+          <input
+            type="text"
+            placeholder="Subject"
+            value={formData.subject}
+            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+            required
+          />
+          <textarea
+            placeholder="Your message..."
+            value={formData.message}
+            onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+            required
+            style={{
+              width: '100%',
+              padding: '14px 18px',
+              borderRadius: '18px',
+              border: '1px solid rgba(19, 32, 42, 0.09)',
+              minHeight: '120px',
+              marginBottom: '14px',
+              fontFamily: 'inherit'
+            }}
+          />
+          <button type="submit" className="button-primary stretch" disabled={isSubmitting}>
+            {isSubmitting ? 'Sending...' : 'Send Message'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+});
 
 function App() {
   const [workshops, setWorkshops] = useState([]);
-  const [pendingWorkshops, setPendingWorkshops] = useState([]);
-  const [featuredEvents, setFeaturedEvents] = useState([]);
-  const [impactStats, setImpactStats] = useState(emptyStats);
+  const [events, setEvents] = useState([]);
+  const [testimonials, setTestimonials] = useState([]);
+  const [impactStats, setImpactStats] = useState(defaultStats);
+  const [ngos, setNgos] = useState([]);
+  const [pendingPrograms, setPendingPrograms] = useState([]);
+  const [pendingEvents, setPendingEvents] = useState([]);
+  const [activePrograms, setActivePrograms] = useState([]);
+  const [activeEvents, setActiveEvents] = useState([]);
+  const [contactMessages, setContactMessages] = useState([]);
+  const [volunteerRequests, setVolunteerRequests] = useState([]);
 
-  const [view, setView] = useState('home');
-  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
+  const [statusMode, setStatusMode] = useState('loading');
+  const [loading, setLoading] = useState(true);
+  const [isBusy, setIsBusy] = useState(false);
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [volunteerSubmitting, setVolunteerSubmitting] = useState(false);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [globalError, setGlobalError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [contactSubmitting, setContactSubmitting] = useState(false);
-  const [toast, setToast] = useState({ message: '', type: 'info', visible: false });
+  const [authData, setAuthData] = useState(emptyAuth);
+  const [contactForm, setContactForm] = useState(emptyContactForm);
+  const [volunteerForm, setVolunteerForm] = useState(emptyVolunteerForm);
+  const [programForm, setProgramForm] = useState(emptyProgramForm);
+  const [editingTarget, setEditingTarget] = useState(null);
+  const [toast, setToast] = useState({ message: '', tone: 'info' });
 
-  const [authData, setAuthData] = useState(() => ({
-    ...emptyAuth,
-    email: localStorage.getItem('userEmail') || '',
-  }));
-  const [newWorkshop, setNewWorkshop] = useState(emptyWorkshop);
-  const [editingWorkshopId, setEditingWorkshopId] = useState(null);
-  const [editingEventId, setEditingEventId] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-
-  const [savedWorkshops, setSavedWorkshops] = useState(() => {
+  const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const stored = localStorage.getItem('savedWorkshops');
-      return stored ? JSON.parse(stored) : [];
+      const stored = localStorage.getItem('skillup-current-user');
+      return stored ? JSON.parse(stored) : null;
     } catch {
-      return [];
+      return null;
     }
   });
 
-  const [contactForm, setContactForm] = useState(emptyContact);
-  // eslint-disable-next-line no-unused-vars
-  const [contactMessages, setContactMessages] = useState([]);
-  const [volunteerRequests, setVolunteerRequests] = useState([]);
-  const [volunteerForm, setVolunteerForm] = useState(emptyVolunteer);
-  const [volunteerSubmitting, setVolunteerSubmitting] = useState(false);
-  const [showContactSection, setShowContactSection] = useState(false);
-
+  const toastTimerRef = useRef(null);
+  const heroRef = useRef(null);
   const aboutRef = useRef(null);
   const programsRef = useRef(null);
-  const adminRef = useRef(null);
+  const impactRef = useRef(null);
+  const volunteerRef = useRef(null);
   const contactRef = useRef(null);
+  const portalRef = useRef(null);
+  const systemRef = useRef(null);
 
-  const showToast = (message, type = 'info', duration = 2800) => {
-    setToast({ message, type, visible: true });
-    window.setTimeout(() => setToast((prev) => ({ ...prev, visible: false })), duration);
-  };
+  const isAdmin = currentUser?.email === ADMIN_EMAIL || currentUser?.email === 'adminskilup@gmail.com';
 
-  const fetchApproved = useCallback(async () => {
-    const data = await fetchJson('/workshops');
-    setWorkshops(data);
-    return data;
+  const showToast = useCallback((message, tone = 'info') => {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+
+    setToast({ message, tone });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast({ message: '', tone: 'info' });
+    }, 3200);
   }, []);
-
-  const fetchPending = useCallback(async () => {
-    const data = await fetchJson('/admin/pending');
-    setPendingWorkshops(data);
-    return data;
-  }, []);
-
-  const fetchEvents = useCallback(async () => {
-    const data = await fetchJson('/events');
-    setFeaturedEvents(data);
-    return data;
-  }, []);
-
-  const fetchImpactStats = useCallback(async () => {
-    const data = await fetchJson('/impact-stats');
-    setImpactStats(data);
-    return data;
-  }, []);
-
-  const fetchContactMessages = useCallback(async () => {
-    const data = await fetchJson('/contacts');
-    setContactMessages(data);
-    return data;
-  }, []);
-
-  const fetchVolunteerRequests = useCallback(async () => {
-    const data = await fetchJson('/volunteers');
-    setVolunteerRequests(data);
-    return data;
-  }, []);
-
-
 
   useEffect(() => {
-    const savedEmail = localStorage.getItem('userEmail');
+    return () => {
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
-    const loadInitialData = async () => {
+  useEffect(() => {
+    if (currentUser?.email) {
+      setAuthData((previous) => ({
+        ...previous,
+        email: currentUser.email,
+      }));
+      localStorage.setItem('skillup-current-user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('skillup-current-user');
+    }
+  }, [currentUser]);
+
+  const refreshPublicData = useCallback(async () => {
+    const responses = await Promise.allSettled([
+      fetchJson('/health'),
+      fetchJson('/workshops'),
+      fetchJson('/events'),
+      fetchJson('/impact-stats'),
+      fetchJson('/testimonials'),
+    ]);
+
+    const [health, workshopResponse, eventResponse, statsResponse, testimonialResponse] = responses;
+
+    if (health.status === 'fulfilled') {
+      setStatusMode(health.value.mode || 'online');
+    } else {
+      setStatusMode('offline');
+    }
+
+    if (workshopResponse.status === 'fulfilled') {
+      setWorkshops(sortByUpcoming(workshopResponse.value));
+    }
+
+    if (eventResponse.status === 'fulfilled') {
+      const normalizedEvents = sortByUpcoming(eventResponse.value).map((item) => ({
+        ...item,
+        type: 'event',
+        institute_name: item.badge || 'Community Event',
+      }));
+      setEvents(normalizedEvents);
+    }
+
+    if (statsResponse.status === 'fulfilled') {
+      setImpactStats(statsResponse.value);
+    }
+
+    if (testimonialResponse.status === 'fulfilled') {
+      setTestimonials(testimonialResponse.value);
+    }
+
+    const failures = responses.filter((result) => result.status === 'rejected');
+    if (failures.length) {
+      throw new Error(failures[0].reason?.message || 'Some content could not be loaded.');
+    }
+  }, []);
+
+  const refreshAdminData = useCallback(async () => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const responses = await Promise.allSettled([
+      fetchJson('/admin/pending'),
+      fetchJson('/admin/events/pending'),
+      fetchJson('/admin/workshops'),
+      fetchJson('/events'),
+      fetchJson('/contacts'),
+      fetchJson('/volunteers'),
+    ]);
+
+    const [pendingPResponse, pendingEResponse, workshopsResponse, activeEventsResponse, contactResponse, volunteerResponse] = responses;
+
+    if (pendingPResponse.status === 'fulfilled') {
+      setPendingPrograms(sortByUpcoming(pendingPResponse.value));
+    }
+    if (pendingEResponse.status === 'fulfilled') {
+      setPendingEvents(sortByUpcoming(pendingEResponse.value));
+    }
+    if (workshopsResponse.status === 'fulfilled') {
+      setActivePrograms(sortByUpcoming(workshopsResponse.value.filter(p => p.status === 'approved')));
+    }
+    if (activeEventsResponse.status === 'fulfilled') {
+      setActiveEvents(sortByUpcoming(activeEventsResponse.value.filter(e => e.status === 'approved')));
+    }
+
+    if (contactResponse.status === 'fulfilled') {
+      setContactMessages(contactResponse.value);
+    }
+    if (volunteerResponse.status === 'fulfilled') {
+      setVolunteerRequests(volunteerResponse.value);
+    }
+
+    const failures = responses.filter((result) => result.status === 'rejected');
+    if (failures.length) {
+      throw new Error(failures[0].reason?.message || 'Admin data could not be loaded.');
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    let active = true;
+
+    const bootstrap = async () => {
+      setLoading(true);
+
       try {
-        setGlobalError('');
-        const results = await Promise.allSettled([
-          fetchApproved(),
-          fetchPending(),
-          fetchEvents(),
-          fetchImpactStats(),
-          ...(savedEmail === ADMIN_EMAIL
-            ? [fetchContactMessages(), fetchVolunteerRequests()]
-            : []),
-        ]);
-
-        const failed = results.filter(r => r.status === 'rejected');
-        if (failed.length > 0) {
-          setGlobalError(failed[0].reason?.message || 'Failed to connect to the server.');
+        await refreshPublicData();
+        if (isAdmin) {
+          await refreshAdminData();
+        }
+      } catch (error) {
+        if (active) {
+          showToast(error.message, 'error');
         }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
-    loadInitialData();
-  }, [
-    fetchApproved,
-    fetchContactMessages,
-    fetchEvents,
-    fetchImpactStats,
-    fetchPending,
-    fetchVolunteerRequests,
-  ]);
+    bootstrap();
+
+    return () => {
+      active = false;
+    };
+  }, [currentUser?.email, refreshAdminData, refreshPublicData, showToast]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('savedWorkshops', JSON.stringify(savedWorkshops));
-    } catch {
-      // Ignore localStorage write errors.
+    if (!deferredSearchTerm || deferredSearchTerm.length < 3) {
+      setNgos([]);
+      return;
     }
-  }, [savedWorkshops]);
 
-  const scrollToSection = (ref) => {
-    setView('home');
-    window.setTimeout(() => {
-      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 0);
+    let active = true;
+
+    const fetchNgos = async () => {
+      try {
+        const url = `https://partners.every.org/v0.2/search/${encodeURIComponent(deferredSearchTerm)}?apiKey=${EVERY_ORG_API_KEY}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (active && data.nonprofits) {
+          setNgos(data.nonprofits.map(n => ({
+            ...n,
+            type: 'ngo',
+            id: n.ein,
+            name: n.name,
+            institute_name: n.name,
+            logoUrl: n.logoUrl || n.logo_url,
+            description: n.description || n.mission || 'A committed nonprofit organization.',
+            location: 'Global / Online'
+          })));
+        }
+      } catch (err) {
+        console.error('Every.org fetch error:', err);
+      }
+    };
+
+    fetchNgos();
+    return () => { active = false; };
+  }, [deferredSearchTerm]);
+
+  const combinedPrograms = useMemo(() => {
+    const livePrograms = workshops.map((item) => ({ ...item, type: 'workshop' }));
+    const allLocal = [...livePrograms, ...events];
+
+    // Ensure at least 8 programs (pad with starter data if needed)
+    const padded = [...allLocal];
+    if (padded.length < 8) {
+      const needed = 8 - padded.length;
+      padded.push(...STARTER_PROGRAMS.slice(0, needed));
+    }
+
+    return sortByUpcoming([...padded, ...ngos]);
+  }, [events, workshops, ngos]);
+
+  const filteredPrograms = useMemo(() => {
+    const query = deferredSearchTerm.trim().toLowerCase();
+
+    return combinedPrograms.filter((item) => {
+      const typeMatches = activeFilter === 'all' || getProgramType(item) === activeFilter;
+      if (!typeMatches) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      return [
+        item.title,
+        item.category,
+        item.location,
+        item.institute_name,
+        item.badge,
+        item.description,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    });
+  }, [activeFilter, combinedPrograms, deferredSearchTerm]);
+
+  const featuredPrograms = useMemo(() => filteredPrograms.slice(0, 8), [filteredPrograms]);
+  const upcomingEvents = useMemo(() => {
+    const futureEvents = events.filter((item) => isFutureOrToday(getProgramDate(item)));
+    const padded = [...futureEvents];
+
+    if (padded.length < 8) {
+      const needed = 8 - padded.length;
+      padded.push(...STARTER_EVENTS.slice(0, needed));
+    }
+
+    return sortByUpcoming(padded).slice(0, 8);
+  }, [events]);
+
+  const scrollToSection = (sectionRef) => {
+    sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleAuth = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const resetProgramForm = () => {
+    setProgramForm(emptyProgramForm);
+    setEditingTarget(null);
+  };
+
+  const handleAuthSubmit = async (event) => {
+    event.preventDefault();
+    setIsBusy(true);
 
     try {
-      const endpoint = showRegister ? '/register' : '/login';
-      const data = await fetchJson(endpoint, {
+      const path = showRegister ? '/register' : '/login';
+      const payload = showRegister
+        ? authData
+        : { email: authData.email, password: authData.password };
+
+      const response = await fetchJson(path, {
         method: 'POST',
-        body: JSON.stringify(authData),
+        body: JSON.stringify(payload),
       });
 
-      showToast(data.message, 'success');
-
-      if (!showRegister) {
-        setIsLoggedIn(true);
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('userEmail', authData.email);
-        setView('home');
-        await fetchPending();
-        if (authData.email === ADMIN_EMAIL) {
-          setShowContactSection(true);
-          await Promise.all([fetchContactMessages(), fetchVolunteerRequests()]);
-          window.setTimeout(() => {
-            adminRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 100);
-        }
-      } else {
+      if (showRegister) {
+        showToast('Account created. You can sign in now.', 'success');
         setShowRegister(false);
+        setAuthData((previous) => ({ ...previous, password: '' }));
+      } else {
+        const user = response.user || { email: authData.email, ngo_name: authData.ngo_name };
+        setCurrentUser(user);
+        showToast(`Welcome back${user.ngo_name ? `, ${user.ngo_name}` : ''}.`, 'success');
+        await refreshPublicData();
+        if (isAdmin) {
+          await refreshAdminData();
+        }
+        setShowAuthModal(false);
       }
     } catch (error) {
-      showToast(error.message || 'Something went wrong. Please try again.', 'error');
+      showToast(error.message, 'error');
     } finally {
-      setIsSubmitting(false);
+      setIsBusy(false);
     }
+  };
+
+  const handleEdit = (item, type) => {
+    setEditingTarget({ ...item, type });
+    setProgramForm({
+      type,
+      title: item.title || item.name || '',
+      institute_name: item.institute_name || item.badge || '',
+      category: item.category || '',
+      date: item.event_date || getProgramDate(item) || '',
+      location: item.location || '',
+      description: item.description || item.mission || '',
+      contact_no: item.contact_no || '',
+    });
+    scrollToSection(systemRef);
   };
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    setView('home');
-    setShowRegister(false);
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('userEmail');
+    setCurrentUser(null);
     setAuthData(emptyAuth);
     setContactMessages([]);
     setVolunteerRequests([]);
+    setPendingPrograms([]);
+    resetProgramForm();
+    showToast('You have been signed out.', 'info');
   };
 
-  const approveWorkshop = async (id) => {
-    setIsSubmitting(true);
+  const handleProgramSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!programForm.title.trim() || !programForm.description.trim()) {
+      showToast('Please add a title and description.', 'error');
+      return;
+    }
+
+    if (!programForm.date || !isFutureOrToday(programForm.date)) {
+      showToast('Please choose a date that is today or later.', 'error');
+      return;
+    }
+
+    setIsBusy(true);
 
     try {
-      await fetchJson(`/admin/approve/${id}`, { method: 'PUT' });
-      showToast('Workshop published!', 'success');
-      await Promise.all([fetchPending(), fetchApproved(), fetchImpactStats()]);
-    } catch (error) {
-      showToast(error.message || 'Unable to approve. Please try again.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const rejectWorkshop = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this workshop?')) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      await fetchJson(`/workshops/${id}`, { method: 'DELETE' });
-      showToast('Workshop removed.', 'success');
-      await Promise.all([fetchPending(), fetchApproved(), fetchImpactStats()]);
-    } catch (error) {
-      showToast(error.message || 'Unable to delete. Please try again.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const deleteLiveWorkshop = async (id) => {
-    if (!window.confirm('Delete this live program?')) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      await fetchJson(`/workshops/${id}`, { method: 'DELETE' });
-      showToast('Program deleted.', 'success');
-      await Promise.all([fetchApproved(), fetchImpactStats()]);
-    } catch (error) {
-      showToast(error.message || 'Unable to delete. Please try again.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const deleteEvent = async (id) => {
-    if (!window.confirm('Delete this community event?')) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      await fetchJson(`/events/${id}`, { method: 'DELETE' });
-      showToast('Event deleted.', 'success');
-      await fetchEvents();
-    } catch (error) {
-      showToast(error.message || 'Unable to delete event.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const startEditingEvent = (event) => {
-    setEditingEventId(event.id);
-    setEditingWorkshopId(null);
-    setIsEditing(true);
-    setShowEditModal(true);
-
-    const rawDate = event.event_date || '';
-    const formattedDate = rawDate ? rawDate.slice(0, 10) : '';
-
-    setNewWorkshop({
-      type: 'event',
-      title: event.title || '',
-      category: event.category || '',
-      date: formattedDate,
-      location: event.location || '',
-      description: event.description || '',
-      institute_name: event.badge || 'Community Event',
-      contact_no: event.contact_no || '',
-    });
-  };
-
-  const startEditingWorkshop = (workshop) => {
-    setEditingWorkshopId(workshop.id);
-    setEditingEventId(null);
-    setIsEditing(true);
-    setShowEditModal(true);
-
-    // DB dates are ISO strings like "2026-04-05T00:00:00.000Z"; slice to YYYY-MM-DD for <input type="date">
-    const rawDate = workshop.date || workshop.event_date || '';
-    const formattedDate = rawDate ? rawDate.slice(0, 10) : '';
-
-    setNewWorkshop({
-      type: 'workshop',
-      title: workshop.title || '',
-      category: workshop.category || '',
-      date: formattedDate,
-      location: workshop.location || '',
-      description: workshop.description || '',
-      institute_name: workshop.institute_name || '',
-      contact_no: workshop.contact_no || '',
-    });
-  };
-
-  const cancelEdit = () => {
-    setEditingWorkshopId(null);
-    setEditingEventId(null);
-    setIsEditing(false);
-    setShowEditModal(false);
-    setNewWorkshop(emptyWorkshop);
-  };
-
-  const handleSubmitWorkshop = async (e) => {
-    e.preventDefault();
-
-    if (!newWorkshop.title.trim() || !newWorkshop.description.trim()) {
-      showToast('Title and description are required.', 'error');
-      return;
-    }
-
-    if (!newWorkshop.date) {
-      showToast('Please choose a date for the workshop.', 'error');
-      return;
-    }
-
-    if (new Date(newWorkshop.date).getTime() < Date.now()) {
-      showToast('Please choose a future date for the workshop.', 'error');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const submittedWorkshop = { ...newWorkshop };
-
-      if (isEditing) {
-        if (editingEventId) {
-          await fetchJson(`/events/${editingEventId}`, {
-            method: 'PUT',
-            body: JSON.stringify({
-              title: submittedWorkshop.title,
-              category: submittedWorkshop.category,
-              event_date: submittedWorkshop.date,
-              location: submittedWorkshop.location,
-              description: submittedWorkshop.description,
-              badge: submittedWorkshop.institute_name,
-              contact_no: submittedWorkshop.contact_no,
-            }),
-          });
-          await fetchEvents();
-          showToast('Event updated successfully!', 'success');
-        } else if (editingWorkshopId) {
-          await fetchJson(`/workshops/${editingWorkshopId}`, {
-            method: 'PUT',
-            body: JSON.stringify(submittedWorkshop),
-          });
-          await Promise.all([fetchPending(), fetchApproved(), fetchImpactStats()]);
-          showToast('Program updated successfully!', 'success');
-        }
+      if (editingTarget?.type === 'event') {
+        await fetchJson(`/events/${editingTarget.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            title: programForm.title,
+            category: programForm.category,
+            event_date: programForm.date,
+            location: programForm.location,
+            description: programForm.description,
+            badge: programForm.institute_name,
+            contact_no: programForm.contact_no,
+          }),
+        });
+      } else if (editingTarget?.type === 'workshop') {
+        await fetchJson(`/workshops/${editingTarget.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(programForm),
+        });
+      } else if (programForm.type === 'event') {
+        await fetchJson('/events', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: programForm.title,
+            category: programForm.category,
+            event_date: programForm.date,
+            location: programForm.location,
+            description: programForm.description,
+            badge: programForm.institute_name,
+            contact_no: programForm.contact_no,
+          }),
+        });
       } else {
-        if (submittedWorkshop.type === 'event') {
-          await fetchJson('/events', {
-            method: 'POST',
-            body: JSON.stringify({
-              title: submittedWorkshop.title,
-              category: submittedWorkshop.category,
-              event_date: submittedWorkshop.date,
-              location: submittedWorkshop.location,
-              description: submittedWorkshop.description,
-              badge: submittedWorkshop.institute_name,
-              contact_no: submittedWorkshop.contact_no,
-            }),
-          });
-          await fetchEvents();
-          showToast('Event submitted successfully!', 'success');
-        } else {
-          await fetchJson('/workshops', {
-            method: 'POST',
-            body: JSON.stringify(submittedWorkshop),
-          });
-
-          try {
-            await sendNotification({
-              type: 'program',
-              name: submittedWorkshop.institute_name,
-              email: authData.email,
-              message: `New program submitted: ${submittedWorkshop.title} — ${submittedWorkshop.description}`,
-            });
-          } catch (_) {}
-
-          await Promise.all([fetchPending(), fetchApproved(), fetchImpactStats()]);
-          showToast('Submitted! An admin will review it.', 'success');
-        }
+        await fetchJson('/workshops', {
+          method: 'POST',
+          body: JSON.stringify(programForm),
+        });
       }
 
-      setNewWorkshop(emptyWorkshop);
-      setIsEditing(false);
-      setEditingWorkshopId(null);
-      setEditingEventId(null);
-      setShowEditModal(false);
+      resetProgramForm();
+      showToast(editingTarget ? 'Item updated successfully.' : 'Program submitted successfully.', 'success');
+
+      // Refresh in background
+      refreshPublicData();
+      refreshAdminData();
+
+      if (!editingTarget && programForm.type === 'workshop') {
+        sendNotification({
+          type: 'program',
+          name: programForm.institute_name,
+          email: currentUser?.email || authData.email,
+          message: `${programForm.title} scheduled for ${programForm.date} in ${programForm.location}.`,
+        }).catch(() => { });
+      }
     } catch (error) {
-      showToast(error.message || 'Unable to submit. Please try again.', 'error');
+      showToast(error.message, 'error');
     } finally {
-      setIsSubmitting(false);
+      setIsBusy(false);
     }
   };
 
-  const handleContactSubmit = async (e) => {
-    e.preventDefault();
+  const handleContactSubmit = async (event) => {
+    event.preventDefault();
     setContactSubmitting(true);
 
     try {
-      // Capture form data before resetting
-      const submittedContact = { ...contactForm };
-
+      const payload = { ...contactForm };
       await fetchJson('/contacts', {
         method: 'POST',
-        body: JSON.stringify(submittedContact),
+        body: JSON.stringify(payload),
       });
 
-      // Trigger email notification for contact form
-      try {
-        await sendNotification({
-          type: 'contact',
-          name: submittedContact.full_name,
-          email: submittedContact.email,
-          message: `[${submittedContact.subject}] ${submittedContact.message}`,
-        });
-      } catch (_) {
-        // Notification failure should not block the main flow
-      }
+      showToast('Message sent to the SkillUp team.', 'success');
+      setContactForm(emptyContactForm);
+      setShowContactModal(false);
 
-      setContactForm(emptyContact);
-      showToast('Message sent successfully! Saved in admin inbox.', 'success');
-      await Promise.all([fetchContactMessages(), fetchImpactStats()]);
+      // Refresh in background
+      refreshPublicData();
+      refreshAdminData();
+
+      sendNotification({
+        type: 'contact',
+        name: payload.full_name,
+        email: payload.email,
+        message: `[${payload.subject}] ${payload.message}`,
+      }).catch(() => { });
     } catch (error) {
-      showToast(error.message || 'Unable to send message.', 'error');
+      showToast(error.message, 'error');
     } finally {
       setContactSubmitting(false);
     }
   };
 
-  const handleVolunteerSubmit = async (e) => {
-    e.preventDefault();
+  const handleVolunteerSubmit = async (event) => {
+    event.preventDefault();
     setVolunteerSubmitting(true);
 
     try {
-      await sendNotification({
-        type: 'volunteer',
-        name: volunteerForm.full_name,
-        email: volunteerForm.email,
-        message: `Phone: ${volunteerForm.phone}. Skills: ${volunteerForm.skills}. ${volunteerForm.message}`,
+      const payload = { ...volunteerForm };
+      await fetchJson('/volunteers', {
+        method: 'POST',
+        body: JSON.stringify(payload),
       });
 
-      setVolunteerForm(emptyVolunteer);
-      showToast('Volunteer application sent successfully!', 'success');
+      try {
+        await sendNotification({
+          type: 'volunteer',
+          name: payload.full_name,
+          email: payload.email,
+          message: `Phone: ${payload.phone}. Skills: ${payload.skills}. ${payload.message}`,
+        });
+      } catch {
+        // Keep the UX successful even when email is disabled locally.
+      }
+
+      setVolunteerForm(emptyVolunteerForm);
+      await refreshPublicData();
+      await refreshAdminData();
+      showToast('Volunteer application received.', 'success');
     } catch (error) {
-      showToast(error.message || 'Unable to submit volunteer form.', 'error');
+      showToast(error.message, 'error');
     } finally {
       setVolunteerSubmitting(false);
     }
   };
 
-  const deleteContactMessage = async (id) => {
-    if (!window.confirm('Delete this contact message?')) {
-      return;
-    }
+  const beginEditing = (item, type) => {
+    setEditingTarget({ id: item.id, type });
+    setProgramForm({
+      type,
+      title: item.title || '',
+      category: item.category || '',
+      date: toInputDate(getProgramDate(item)),
+      location: item.location || '',
+      description: item.description || '',
+      institute_name: item.institute_name || item.badge || '',
+      contact_no: item.contact_no || '',
+    });
+    scrollToSection(systemRef);
+  };
 
+  const approveItem = async (id, type) => {
+    setIsBusy(true);
+
+    try {
+      const endpoint = type === 'event' ? `/admin/events/approve/${id}` : `/admin/approve/${id}`;
+      await fetchJson(endpoint, {
+        method: 'PUT',
+      });
+      showToast(`${type === 'event' ? 'Event' : 'Program'} approved and published.`, 'success');
+
+      // Refresh in background
+      refreshPublicData();
+      refreshAdminData();
+    } catch (error) {
+      showToast(error.message, 'error');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const deleteItem = async (id, type) => {
+    const label = type === 'event' ? 'community event' : 'program';
+
+    setIsBusy(true);
+
+    try {
+      await fetchJson(type === 'event' ? `/events/${id}` : `/workshops/${id}`, {
+        method: 'DELETE',
+      });
+      showToast(`${type === 'event' ? 'Event' : 'Program'} deleted.`, 'success');
+
+      // Refresh in background
+      refreshPublicData();
+      refreshAdminData();
+    } catch (error) {
+      showToast(error.message, 'error');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const deleteContactMessage = async (id) => {
     try {
       await fetchJson(`/contacts/${id}`, { method: 'DELETE' });
       showToast('Contact message deleted.', 'success');
-      await fetchContactMessages();
+      refreshAdminData();
+      refreshPublicData();
     } catch (error) {
-      showToast(error.message || 'Unable to delete message.', 'error');
+      showToast(error.message, 'error');
     }
   };
 
   const deleteVolunteerRequest = async (id) => {
-    if (!window.confirm('Delete this volunteer request?')) {
-      return;
-    }
-
     try {
       await fetchJson(`/volunteers/${id}`, { method: 'DELETE' });
       showToast('Volunteer request deleted.', 'success');
-      await fetchVolunteerRequests();
+      refreshAdminData();
+      refreshPublicData();
     } catch (error) {
-      showToast(error.message || 'Unable to delete volunteer request.', 'error');
+      showToast(error.message, 'error');
     }
   };
 
+  const statusLabel =
+    statusMode === 'database'
+      ? 'Connected to the live database'
+      : statusMode === 'local'
+        ? 'Running in local demo mode'
+        : statusMode === 'offline'
+          ? 'API unavailable'
+          : 'Connecting to local services';
 
-  const toggleSavedWorkshop = (id) => {
-    setSavedWorkshops((prev) => {
-      if (prev.includes(id)) return prev.filter((savedId) => savedId !== id);
-      return [...prev, id];
-    });
+  const handleContact = async (item) => {
+    try {
+      showToast(`Notifying ${item.institute_name || item.name}...`, 'info');
+      await sendNotification({
+        type: 'contact',
+        name: 'Website User',
+        email: 'Anonymous / Guest',
+        message: `A user expressed interest in your program: ${item.title || item.name}. Please contact the SkillUp team for details.`
+      });
+      showToast(`Interest sent to ${item.institute_name || item.name}. They will reach out shortly!`, 'success');
+    } catch {
+      showToast('Notification failed, but the team will be informed.', 'warning');
+    }
+    setSelectedItem(null);
   };
-
-  const formatDate = (rawDate) => {
-    if (!rawDate) return 'TBA';
-    const date = new Date(rawDate);
-    if (Number.isNaN(date.getTime())) return 'TBA';
-    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-  };
-
-  const formatNumber = (value) => new Intl.NumberFormat().format(Number(value || 0));
-
-
-
-  const getVisibleWorkshops = () => {
-    return [...workshops].sort((a, b) => {
-      const aDate = new Date(a.event_date || a.date).getTime();
-      const bDate = new Date(b.event_date || b.date).getTime();
-      return bDate - aDate;
-    });
-  };
-
-  const isAdmin = authData.email === ADMIN_EMAIL;
-  const communityEvents = featuredEvents;
-  const impactCards = [
-    { label: 'Programs Published', value: formatNumber(impactStats.workshopsPublished) },
-  ];
-
-  // Removed blocking full-screen loader to improve perceived performance during cold starts
-
-  if (globalError) {
-    return (
-      <div className="App">
-        <nav className="navbar">
-          <button className="logo" type="button" aria-label="SkillUp Connect Logo" onClick={() => window.location.reload()}>
-            SkillUp Connect
-          </button>
-        </nav>
-        <div className="empty-state" style={{ margin: '15vh auto', maxWidth: '600px', textAlign: 'center', border: '1px solid #1f2937', backgroundColor: '#0f172a', padding: '3rem', borderRadius: '12px' }}>
-          <h2 style={{ color: '#ef4444', marginBottom: '1rem' }}>Connection Failed</h2>
-          <p style={{ color: '#94a3b8', fontSize: '1.1rem' }}>{globalError}</p>
-          <p style={{ color: '#64748b', marginTop: '1rem', lineHeight: '1.6' }}>Please double check that your backend server is running and connected to a MySQL database.</p>
-          <button className="submit-btn" style={{ marginTop: '2rem' }} aria-label="Retry Connection" onClick={() => window.location.reload()}>
-            Retry Connection
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="App">
-      {toast.visible && <div className={`toast ${toast.type}`}>{toast.message}</div>}
+    <div className="app-shell">
+      {toast.message && <div className={`toast ${toast.tone}`}>{toast.message}</div>}
 
-      {selectedItem && (
-        <div className="modal-overlay" onClick={() => setSelectedItem(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="category-badge">{selectedItem.badge || selectedItem.category}</span>
-              <button 
-                onClick={() => setSelectedItem(null)} 
-                style={{ background: 'none', border: 'none', fontSize: '1.8rem', cursor: 'pointer', color: 'var(--muted)', lineHeight: '1' }}>
-                &times;
+      <DetailModal item={selectedItem} onClose={() => setSelectedItem(null)} onContact={handleContact} />
+
+      <ContactModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        formData={contactForm}
+        setFormData={setContactForm}
+        onSubmit={handleContactSubmit}
+        isSubmitting={contactSubmitting}
+      />
+
+      <header className="topbar modern-header">
+        <div className="topbar-content">
+          <button type="button" className="brand" onClick={() => scrollToSection(heroRef)}>
+            <span>SkillUp</span> Connect
+          </button>
+
+          <button 
+            type="button" 
+            className={`mobile-toggle ${mobileMenuOpen ? 'active' : ''}`} 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          <nav className={`nav-links modern-nav ${mobileMenuOpen ? 'mobile-active' : ''}`} aria-label="Primary navigation">
+            <button type="button" onClick={() => { scrollToSection(aboutRef); setMobileMenuOpen(false); }}>About us</button>
+            <button type="button" onClick={() => { scrollToSection(programsRef); setMobileMenuOpen(false); }}>Programs</button>
+            
+            <div className="mobile-actions">
+              {currentUser ? (
+                <button type="button" className="button-secondary" onClick={() => { handleLogout(); setMobileMenuOpen(false); }}>
+                  Sign out
+                </button>
+              ) : (
+                <button type="button" className="button-primary" onClick={() => { setShowAuthModal(true); setMobileMenuOpen(false); }}>
+                  Login
+                </button>
+              )}
+            </div>
+          </nav>
+
+          <div className="topbar-actions desktop-only">
+            {currentUser ? (
+              <button type="button" className="button-secondary" onClick={handleLogout}>
+                Sign out
               </button>
-            </div>
-            <h3 style={{ margin: '16px 0 12px' }}>{selectedItem.title}</h3>
-            
-            <p className="muted-line">
-              <strong>{selectedItem.institute_name || selectedItem.location}</strong>
-            </p>
-            <p className="program-date">
-              <strong>Date:</strong> {formatDate(selectedItem.date || selectedItem.event_date)}
-            </p>
-            {selectedItem.contact_no && (
-              <p className="program-date" style={{ color: 'var(--accent)', marginTop: '4px' }}>
-                <strong>Contact:</strong> {selectedItem.contact_no}
-              </p>
+            ) : (
+              <button type="button" className="button-primary" onClick={() => setShowAuthModal(true)}>
+                Login
+              </button>
             )}
-            
-            <div style={{ padding: '16px 0', borderTop: '1px solid var(--border)', marginTop: '16px' }}>
-              <p style={{ lineHeight: '1.7', color: 'var(--text)', whiteSpace: 'pre-wrap', margin: 0 }}>
-                {selectedItem.description}
-              </p>
-            </div>
           </div>
         </div>
-      )}
+      </header>
 
-      <nav className="navbar">
-        <button className="logo" type="button" aria-label="Go to Home" onClick={() => setView('home')}>
-          SkillUp Connect
-        </button>
-
-        <div className="nav-links">
-          <button className={`nav-link ${view === 'home' ? 'active' : ''}`} type="button" aria-label="Home page" onClick={() => setView('home')}>
-            Home
-          </button>
-          <button className="nav-link" type="button" aria-label="About us" onClick={() => scrollToSection(aboutRef)}>
-            About
-          </button>
-          <button className="nav-link" type="button" aria-label="Programs" onClick={() => scrollToSection(programsRef)}>
-            Programs
-          </button>
-          {isLoggedIn && isAdmin && (
-            <button className="nav-link" type="button" aria-label="Admin Panel" onClick={() => scrollToSection(adminRef)}>
-              Admin Panel
-            </button>
-          )}
-          <button className="nav-link" type="button" aria-label="NGO Portal" onClick={() => (isLoggedIn ? setView('home') : setView('login'))}>
-            NGO Portal
-          </button>
-          {isLoggedIn && (
-            <button className="nav-link" type="button" aria-label="Logout" onClick={handleLogout}>
-              Logout
-            </button>
-          )}
-        </div>
-      </nav>
-
-      {view === 'home' && (
-        <div className="landing-page">
-          <header className="hero-section">
-            <div className="hero-copy">
-              <span className="eyebrow">Community-led learning platform</span>
-              <h1>Helping People Build a Better Future.</h1>
-              <p>
-                SkillUp Connect brings together people who want to learn and NGOs that want to help. We make it easy for you to find workshops, join camps, and gain new skills to improve your life.
-              </p>
-
-              <div className="hero-actions">
-                <button className="submit-btn" type="button" aria-label="Explore Programs" onClick={() => scrollToSection(programsRef)}>
-                  Explore Programs
-                </button>
-
-                <button className="outline-btn" type="button" aria-label="Go to NGO Portal" onClick={() => setView('login')}>
-                  NGO Portal
-                </button>
-              </div>
-            </div>
-
-            <aside className="hero-panel">
-              <div className="hero-panel-card">
-                <span className="panel-label">Live Impact</span>
-                <div className="panel-value">{formatNumber(impactStats.estimatedLivesTouched)}</div>
-                <p>Estimated lives touched through educational programs and community support.</p>
-              </div>
-              <div className="hero-mini-grid">
-                {impactCards.map((card) => (
-                  <div key={card.label} className="mini-stat">
-                    <span>{card.label}</span>
-                    <strong>{card.value}</strong>
-                  </div>
-                ))}
-              </div>
-            </aside>
-          </header>
-
-          <section ref={aboutRef} className="section-shell dark-section">
-            <div className="section-heading">
-              <span className="section-tag">About the Initiative</span>
-              <h2>Our Goal: A Stronger Community.</h2>
-              <p>
-                Many people have talent but don't know where to learn. Foundations like Lighthouse and Madhushram have great programs but need a way to reach you. We created this platform to connect you directly to these opportunities.
-              </p>
-            </div>
-
-            <div className="section-heading" style={{ marginTop: '48px' }}>
-              <h2>Our Success in Numbers.</h2>
-              <p>
-                We are proud to show real results. With over 100 students helped and multiple active programs, we are making a difference every single day.
-              </p>
-            </div>
-          </section>
-
-          <section className="section-shell dark-section bg-teal">
-            <div className="section-heading">
-              <span className="section-tag">Community Events</span>
-              <h2>Learn Something New Today.</h2>
-              <p>From Youth Leadership Camps to Career Counseling, we offer a variety of programs to help you grow. Browse our list and pick the one that fits your goals.</p>
-            </div>
-
-            {loading && communityEvents.length === 0 ? (
-              <div className="empty-state">
-                <p>Loading community events...</p>
-              </div>
-            ) : (
-              <div className="events-grid">
-                {communityEvents.map((event) => (
-                  <article key={event.id} className="event-card clickable-card" onClick={() => setSelectedItem({ ...event, itemType: 'event' })}>
-                    <span className="category-badge">{event.badge || event.category}</span>
-                    <h3>{event.title}</h3>
-                    <p className="muted-line">{event.location}</p>
-                    <p className="program-date">{formatDate(event.event_date)}</p>
-                    {event.contact_no && (
-                      <p className="program-date" style={{ color: 'var(--accent)', marginTop: '4px' }}>
-                        <strong>Contact:</strong> {event.contact_no}
-                      </p>
-                    )}
-                    <p className="line-clamp-3" style={{ marginTop: '12px' }}>{event.description}</p>
-
-                    {isAdmin && (
-                      <div className="card-actions" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          className="nav-btn"
-                          type="button"
-                          aria-label="Edit event"
-                          onClick={() => startEditingEvent(event)}
-                          style={{ backgroundColor: '#2563eb' }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="nav-btn"
-                          type="button"
-                          aria-label="Delete event"
-                          onClick={() => deleteEvent(event.id)}
-                          style={{ backgroundColor: '#dc2626' }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section ref={programsRef} className="section-shell dark-section bg-blue">
-            <div className="section-heading">
-              <span className="section-tag">Live Programs</span>
-              <h2>Pick a Program to Join</h2>
-            </div>
-
-            {getVisibleWorkshops().length > 0 ? (
-              <div className="workshop-list">
-                {getVisibleWorkshops().map((workshop) => (
-                  <article key={workshop.id} className="program-card clickable-card" onClick={() => setSelectedItem({ ...workshop, itemType: 'program' })}>
-                    <span className="category-badge">{workshop.category}</span>
-                    <h3>{workshop.title}</h3>
-                    <p className="muted-line">
-                      <strong>{workshop.institute_name}</strong>
-                    </p>
-                    <p className="program-date">
-                      <strong>Date:</strong> {formatDate(workshop.date || workshop.event_date)}
-                    </p>
-                    {workshop.contact_no && (
-                      <p className="program-date" style={{ color: 'var(--accent)', marginTop: '4px' }}>
-                        <strong>Contact:</strong> {workshop.contact_no}
-                      </p>
-                    )}
-                    <p className="line-clamp-3" style={{ marginTop: '12px' }}>{workshop.description}</p>
-
-                    <div className="card-actions" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className="nav-btn"
-                        type="button"
-                        aria-label="Save or unsave workshop"
-                        onClick={() => toggleSavedWorkshop(workshop.id)}
-                        style={{ backgroundColor: savedWorkshops.includes(workshop.id) ? '#D69E2E' : '#48BB78' }}
-                      >
-                        {savedWorkshops.includes(workshop.id) ? 'Saved' : 'Save'}
-                      </button>
-
-                      {isAdmin && (
-                        <>
-                          <button
-                            className="nav-btn"
-                            type="button"
-                            aria-label="Edit workshop"
-                            onClick={() => startEditingWorkshop(workshop)}
-                            style={{ backgroundColor: '#2563eb' }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="nav-btn"
-                            type="button"
-                            aria-label="Delete workshop"
-                            onClick={() => deleteLiveWorkshop(workshop.id)}
-                            style={{ backgroundColor: '#dc2626' }}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state">
-                {loading ? (
-                  <>
-                    <h3>Loading programs...</h3>
-                    <p>Please wait while we wake up the server.</p>
-                  </>
-                ) : (
-                  <>
-                    <h3>No live programs yet.</h3>
-                    <p>Check back later or register as an NGO to post one.</p>
-                  </>
-                )}
-              </div>
-            )}
-          </section>
-
-          {showContactSection && (
-            <>
-              <section ref={contactRef} className="section-shell dark-section bg-navy">
-                <div className="section-heading">
-                  <span className="section-tag">Get In Touch</span>
-                  <h2>Start a conversation with our team.</h2>
-                </div>
-
-                <form onSubmit={handleContactSubmit} className="modern-form contact-form">
-                  <input
-                    type="text"
-                    placeholder="Full Name"
-                    value={contactForm.full_name}
-                    onChange={(e) => setContactForm({ ...contactForm, full_name: e.target.value })}
-                    required
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={contactForm.email}
-                    onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Subject"
-                    value={contactForm.subject}
-                    onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
-                    required
-                  />
-                  <textarea
-                    placeholder="Message"
-                    value={contactForm.message}
-                    onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                    required
-                  />
-                  <button type="submit" className="submit-btn" disabled={contactSubmitting} aria-label="Send contact message">
-                    {contactSubmitting ? 'Processing...' : 'Send Message'}
-                  </button>
-                </form>
-              </section>
-
-              <section className="section-shell volunteer-section dark-section">
-                <div className="section-heading">
-                  <span className="section-tag">Volunteer</span>
-                  <h2>Want to Help Us?</h2>
-                  <p>Contribute your time, skills, and passion to uplift communities. Sign up and we'll get in touch!</p>
-                </div>
-
-                <form onSubmit={handleVolunteerSubmit} className="modern-form volunteer-form">
-                  <input
-                    type="text"
-                    placeholder="Full Name"
-                    value={volunteerForm.full_name}
-                    onChange={(e) => setVolunteerForm({ ...volunteerForm, full_name: e.target.value })}
-                    required
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={volunteerForm.email}
-                    onChange={(e) => setVolunteerForm({ ...volunteerForm, email: e.target.value })}
-                    required
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Phone"
-                    value={volunteerForm.phone}
-                    onChange={(e) => setVolunteerForm({ ...volunteerForm, phone: e.target.value })}
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Skills (e.g. Teaching, Design, Coding)"
-                    value={volunteerForm.skills}
-                    onChange={(e) => setVolunteerForm({ ...volunteerForm, skills: e.target.value })}
-                    required
-                  />
-                  <textarea
-                    placeholder="Why do you want to volunteer?"
-                    value={volunteerForm.message}
-                    onChange={(e) => setVolunteerForm({ ...volunteerForm, message: e.target.value })}
-                    required
-                  />
-                  <button type="submit" className="submit-btn" disabled={volunteerSubmitting} aria-label="Submit volunteer application">
-                    {volunteerSubmitting ? 'Processing...' : 'Sign Up to Volunteer'}
-                  </button>
-                </form>
-              </section>
-            </>
-          )}
-        </div>
-      )}
-
-      {view === 'login' && !isLoggedIn && (
-        <section className="auth-view">
-          <div className="auth-container">
-            <div className="auth-card">
-              <header className="auth-header">
-                <h2>{showRegister ? 'Create your NGO account' : 'Welcome back'}</h2>
-                <p>{showRegister ? 'Register and start publishing programs.' : 'Login to manage your programs and approvals.'}</p>
-              </header>
-
-              <form onSubmit={handleAuth} className="auth-form">
-                {showRegister && (
-                  <input
-                    type="text"
-                    placeholder="NGO Name"
-                    value={authData.ngo_name}
-                    onChange={(e) => setAuthData({ ...authData, ngo_name: e.target.value })}
-                    required
-                  />
-                )}
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={authData.email}
-                  onChange={(e) => setAuthData({ ...authData, email: e.target.value })}
-                  required
-                />
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Password"
-                    value={authData.password}
-                    onChange={(e) => setAuthData({ ...authData, password: e.target.value })}
-                    required
-                    style={{ width: '100%', paddingRight: '45px' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '15px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '1.1rem',
-                      padding: 0,
-                    }}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? '🙈' : '👁️'}
-                  </button>
-                </div>
-
-                <button type="submit" className="submit-btn" disabled={isSubmitting} aria-label={showRegister ? 'Create account' : 'Login'}>
-                  {isSubmitting ? 'Processing...' : showRegister ? 'Create account' : 'Login'}
-                </button>
-
-                <p className="switch-view" onClick={() => setShowRegister(!showRegister)}>
-                  {showRegister ? 'Already have an account? Login' : 'New NGO? Register here'}
-                </p>
-              </form>
+      <main>
+        <section className="hero-section" ref={heroRef}>
+          <div className="hero-copy">
+            <span className="hero-kicker">Community action, beautifully organized</span>
+            <h1>Helping People Build a Better Future.</h1>
+            <p>
+              SkillUp Connect brings together people who want to learn and NGOs that want to help.
+              We make it easy for you to find workshops, join camps, and gain new skills to improve your life.
+            </p>
+            <div className="hero-actions">
+              <button type="button" className="button-primary" onClick={() => scrollToSection(programsRef)}>
+                Explore opportunities
+              </button>
             </div>
           </div>
         </section>
-      )}
 
-      {isLoggedIn && (
-        <main className="main-content">
-          {isAdmin && showEditModal && (
-            <div className="modal-overlay" onClick={cancelEdit}>
-              <div className="modal" onClick={(e) => e.stopPropagation()}>
-                <h3>{editingEventId ? 'Edit Event' : 'Edit Program'}</h3>
-                <form onSubmit={handleSubmitWorkshop} className="auth-form">
-                  <select
-                    value={newWorkshop.type}
-                    onChange={(e) => setNewWorkshop({ ...newWorkshop, type: e.target.value })}
-                    required
-                    style={{
-                      width: '100%', borderRadius: '16px', border: '1px solid var(--border)',
-                      background: 'var(--bg-strong)', padding: '13px 15px', color: 'var(--text)'
-                    }}
-                  >
-                    <option value="workshop">Live Program</option>
-                    <option value="event">Community Event</option>
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="Title"
-                    value={newWorkshop.title}
-                    onChange={(e) => setNewWorkshop({ ...newWorkshop, title: e.target.value })}
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Institute Name or Organizer"
-                    value={newWorkshop.institute_name}
-                    onChange={(e) => setNewWorkshop({ ...newWorkshop, institute_name: e.target.value })}
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Category"
-                    value={newWorkshop.category}
-                    onChange={(e) => setNewWorkshop({ ...newWorkshop, category: e.target.value })}
-                    required
-                  />
-                  <input
-                    type="date"
-                    value={newWorkshop.date}
-                    onChange={(e) => setNewWorkshop({ ...newWorkshop, date: e.target.value })}
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Location"
-                    value={newWorkshop.location}
-                    onChange={(e) => setNewWorkshop({ ...newWorkshop, location: e.target.value })}
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Contact Number"
-                    value={newWorkshop.contact_no}
-                    onChange={(e) => setNewWorkshop({ ...newWorkshop, contact_no: e.target.value })}
-                  />
-                  <textarea
-                    placeholder="Description"
-                    value={newWorkshop.description}
-                    onChange={(e) => setNewWorkshop({ ...newWorkshop, description: e.target.value })}
-                    required
-                  />
-                  <div className="button-row">
-                    <button type="submit" className="submit-btn" disabled={isSubmitting} aria-label="Submit modified program">
-                      {isSubmitting ? 'Processing...' : 'Update Program'}
+        <section className="about-initiative-section" id="about" ref={aboutRef}>
+          <div className="initiative-card">
+            <div className="initiative-content">
+              <span className="section-eyebrow">ABOUT THE INITIATIVE</span>
+              <h2>Our Goal: A Stronger Community.</h2>
+              <p>
+                Many people have talent but don't know where to learn. Foundations like Lighthouse
+                and Madhushram have great programs but need a way to reach you. We created this
+                platform to connect you directly to these opportunities.
+              </p>
+
+              <div className="initiative-numbers">
+                <h2>Our Success in Numbers.</h2>
+                <p>
+                  We are proud to show real results. With over 100 students helped and multiple
+                  active programs, we are making a difference every single day.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="content-section" ref={programsRef}>
+          <SectionHeading
+            eyebrow="Programs"
+            title="Search the current lineup"
+            description="Browse live workshops and community events through one clean, searchable experience."
+          />
+
+          <div className="program-toolbar">
+            <SearchFilter
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              placeholder="Search by title, city, category, or organization"
+            />
+            <div className="filter-group" role="tablist" aria-label="Program filters">
+              {PROGRAM_FILTERS.map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  className={activeFilter === filter.id ? 'active' : ''}
+                  onClick={() => setActiveFilter(filter.id)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="grid-shell">
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="loading-card" />
+              ))}
+            </div>
+          ) : filteredPrograms.length ? (
+            <div className="grid-shell">
+              {filteredPrograms.map((item) => (
+                <ProgramCard
+                  key={`${getProgramType(item)}-${item.id}`}
+                  item={item}
+                  onOpen={(program, type) =>
+                    setSelectedItem({
+                      ...program,
+                      type,
+                      event_date: getProgramDate(program),
+                      institute_name: program.institute_name || program.badge || 'SkillUp Partner',
+                    })
+                  }
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <h3>No matches found</h3>
+              <p>Try a different search or clear the current filter to see more opportunities.</p>
+            </div>
+          )}
+        </section>
+
+        <section className="highlight-section">
+          <div className="highlight-card">
+            <SectionHeading
+              eyebrow="Upcoming"
+              title="Community events worth spotlighting"
+              description="A quick-glance list of public events that deserve extra visibility."
+            />
+            <div className="event-rail">
+              {upcomingEvents.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="event-row"
+                  onClick={() => setSelectedItem({ ...item, event_date: getProgramDate(item), type: 'event' })}
+                >
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.location}</span>
+                  </div>
+                  <small>{formatDate(getProgramDate(item))}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {currentUser && (
+        <div className="management-area">
+          {/* Administrator Dashboard Section Removed */}
+
+          <section className="portal-section system-workspace-section" id="system-workspace" ref={systemRef}>
+            <SectionHeading
+              eyebrow="System Workspace"
+              title={editingTarget ? 'Edit Opportunity' : 'Submit New Opportunity'}
+              description="Provide the details for your new program or community event to be published on the platform."
+            />
+            <div className="workspace-box">
+              <div className="portal-card submission-card">
+                <form className="feature-form grid-form" onSubmit={handleProgramSubmit}>
+                  {isAdmin && (
+                    <div className="form-group span-full">
+                      <label>Entry Type</label>
+                      <select
+                        value={programForm.type}
+                        onChange={(event) => setProgramForm({ ...programForm, type: event.target.value })}
+                      >
+                        <option value="workshop">Live Program</option>
+                        <option value="event">Community Event</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label>Title</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Digital Literacy Sprint"
+                      value={programForm.title}
+                      onChange={(event) => setProgramForm({ ...programForm, title: event.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>{programForm.type === 'event' ? 'Organizer name' : 'Institute/NGO name'}</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Bright Future NGO"
+                      value={programForm.institute_name}
+                      onChange={(event) => setProgramForm({ ...programForm, institute_name: event.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Category</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Technology, Health"
+                      value={programForm.category}
+                      onChange={(event) => setProgramForm({ ...programForm, category: event.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Scheduled Date</label>
+                    <input
+                      type="date"
+                      value={programForm.date}
+                      onChange={(event) => setProgramForm({ ...programForm, date: event.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Location</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Mumbai Centre, Hybrid"
+                      value={programForm.location}
+                      onChange={(event) => setProgramForm({ ...programForm, location: event.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Contact Number (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="+91 00000 00000"
+                      value={programForm.contact_no}
+                      onChange={(event) => setProgramForm({ ...programForm, contact_no: event.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group span-full">
+                    <label>Description</label>
+                    <textarea
+                      placeholder="Describe the opportunity, target audience, and key benefits..."
+                      value={programForm.description}
+                      onChange={(event) => setProgramForm({ ...programForm, description: event.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-actions span-full">
+                    <button type="submit" className="button-primary">
+                      {editingTarget ? 'Update item' : programForm.type === 'event' ? 'Publish event' : 'Submit for review'}
                     </button>
-                    <button
-                      type="button"
-                      className="nav-btn"
-                      aria-label="Cancel editing"
-                      style={{ backgroundColor: '#dc2626' }}
-                      onClick={cancelEdit}
-                    >
-                      Cancel
-                    </button>
+                    {editingTarget && (
+                      <button type="button" className="button-secondary" onClick={resetProgramForm}>
+                        Cancel edit
+                      </button>
+                    )}
                   </div>
                 </form>
               </div>
             </div>
-          )}
+          </section>
 
           {isAdmin && (
-            <section ref={adminRef} className="admin-section admin-dashboard">
-              <div className="section-heading">
-                <span className="section-tag">Admin Dashboard</span>
-                <h2>Approvals, messages, and volunteer requests.</h2>
-                <p>Everything the admin needs is grouped here so it is easy to find and manage.</p>
-              </div>
+            <section className="portal-section admin-management-section" id="admin-management">
+              <SectionHeading
+                eyebrow="Management"
+                title="Admin Management"
+                description="Review pending community submissions and manage live content across the platform."
+              />
 
-              <div className="admin-grid">
-                <section className="admin-panel-card">
-                  <h2>Pending approvals ({pendingWorkshops.length})</h2>
-                  {pendingWorkshops.length > 0 ? (
-                    <div className="admin-stack">
-                      {pendingWorkshops.map((workshop) => (
-                        <article key={workshop.id} className="program-card approval-card">
-                          <h3>{workshop.title}</h3>
-                          <p>
-                            <strong>NGO:</strong> {workshop.institute_name}
-                          </p>
-                          <div className="card-actions">
-                            <button
-                              className="nav-btn"
-                              type="button"
-                              aria-label="Approve pending workshop"
-                              onClick={() => approveWorkshop(workshop.id)}
-                              style={{ backgroundColor: '#16a34a' }}
-                            >
-                              Approve
-                            </button>
-                            <button
-                              className="nav-btn"
-                              type="button"
-                              aria-label="Reject and delete pending workshop"
-                              onClick={() => rejectWorkshop(workshop.id)}
-                              style={{ backgroundColor: '#dc2626' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="empty-state">
-                      <h3>No pending workshops right now.</h3>
-                      <p>New NGO submissions will appear here for approval.</p>
-                    </div>
-                  )}
-                </section>
+              <div className="admin-grid-layout">
+                <div className="admin-column">
+                  <div className="column-header">
+                    <h4>Pending approvals</h4>
+                    <span className="count-badge">{pendingPrograms.length}</span>
+                  </div>
+                  <div className="column-content">
+                    {pendingPrograms.length || pendingEvents.length ? (
+                      <>
+                        {pendingPrograms.map((item) => (
+                          <ProgramCard
+                            key={`pending-p-${item.id}`}
+                            item={{ ...item, type: 'workshop' }}
+                            type="workshop"
+                            canManage
+                            isPending
+                            onOpen={(program, type) =>
+                              setSelectedItem({
+                                ...program,
+                                type,
+                                event_date: getProgramDate(program),
+                                institute_name: program.institute_name || 'SkillUp Partner',
+                              })
+                            }
+                            onApprove={(id) => approveItem(id, 'workshop')}
+                            onEdit={handleEdit}
+                            onDelete={deleteItem}
+                          />
+                        ))}
+                        {pendingEvents.map((item) => (
+                          <ProgramCard
+                            key={`pending-e-${item.id}`}
+                            item={{ ...item, type: 'event', institute_name: item.badge }}
+                            type="event"
+                            canManage
+                            isPending
+                            onOpen={(program, type) =>
+                              setSelectedItem({
+                                ...program,
+                                type,
+                                event_date: getProgramDate(program),
+                                institute_name: program.badge || 'Community Event',
+                              })
+                            }
+                            onApprove={(id) => approveItem(id, 'event')}
+                            onEdit={handleEdit}
+                            onDelete={deleteItem}
+                          />
+                        ))}
+                      </>
+                    ) : (
+                      <div className="empty-state-small">No programs awaiting review.</div>
+                    )}
+                  </div>
+                </div>
 
-                <section className="admin-panel-card">
-                  <h2>Messages ({contactMessages.length})</h2>
-                  {contactMessages.length > 0 ? (
-                    <div className="admin-stack">
-                      {contactMessages.map((message) => (
-                        <article key={message.id} className="contact-card">
-                          <div className="contact-card-head">
-                            <div>
-                              <h3>{message.subject}</h3>
-                              <p className="muted-line">
-                                <strong>{message.full_name}</strong> · {message.email}
-                              </p>
-                            </div>
-                            <span className="contact-date">{formatDate(message.created_at)}</span>
-                          </div>
-                          <p className="contact-message">{message.message}</p>
-                          <div className="card-actions">
-                            <button
-                              className="nav-btn"
-                              type="button"
-                              aria-label="Delete contact message"
-                              onClick={() => deleteContactMessage(message.id)}
-                              style={{ backgroundColor: '#dc2626' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="empty-state">
-                      <h3>No messages yet.</h3>
-                      <p>Contact submissions will appear here.</p>
-                    </div>
-                  )}
-                </section>
+                <div className="admin-column">
+                  <div className="column-header">
+                    <h4>Active Programs & Events</h4>
+                    <span className="count-badge">{activePrograms.length + activeEvents.length}</span>
+                  </div>
+                  <div className="column-content">
+                    {activePrograms.map(p => (
+                      <ProgramCard
+                        key={`active-p-${p.id}`}
+                        item={{ ...p, type: 'workshop' }}
+                        canManage
+                        onOpen={(item) => setSelectedItem({ ...item, type: 'workshop', event_date: getProgramDate(item) })}
+                        onEdit={handleEdit}
+                        onDelete={deleteItem}
+                      />
+                    ))}
+                    {activeEvents.map(e => (
+                      <ProgramCard
+                        key={`active-e-${e.id}`}
+                        item={{ ...e, type: 'event', institute_name: e.badge }}
+                        canManage
+                        onOpen={(item) => setSelectedItem({ ...item, type: 'event', event_date: getProgramDate(item) })}
+                        onEdit={handleEdit}
+                        onDelete={deleteItem}
+                      />
+                    ))}
+                    {!activePrograms.length && !activeEvents.length && (
+                      <div className="empty-state-small">No active content published.</div>
+                    )}
+                  </div>
+                </div>
 
-                <section className="admin-panel-card">
-                  <h2>Volunteer requests ({volunteerRequests.length})</h2>
-                  {volunteerRequests.length > 0 ? (
-                    <div className="admin-stack">
-                      {volunteerRequests.map((request) => (
-                        <article key={request.id} className="contact-card">
-                          <div className="contact-card-head">
-                            <div>
-                              <h3>{request.full_name}</h3>
-                              <p className="muted-line">{request.email} · {request.phone}</p>
-                            </div>
-                            <span className="contact-date">{formatDate(request.created_at)}</span>
-                          </div>
-                          <p className="contact-message">
-                            <strong>Skills:</strong> {request.skills}
-                            <br />
-                            {request.message}
-                          </p>
-                          <div className="card-actions">
-                            <button
-                              className="nav-btn"
-                              type="button"
-                              aria-label="Delete volunteer request"
-                              onClick={() => deleteVolunteerRequest(request.id)}
-                              style={{ backgroundColor: '#dc2626' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="empty-state">
-                      <h3>No volunteer requests yet.</h3>
-                      <p>Volunteer submissions will appear here.</p>
-                    </div>
-                  )}
-                </section>
+                <div className="admin-column">
+                  <div className="column-header">
+                    <h4>Inboxes (Messages & Volunteers)</h4>
+                    <span className="count-badge">{contactMessages.length + volunteerRequests.length}</span>
+                  </div>
+                  <div className="column-content">
+                    {contactMessages.map((m) => (
+                      <div key={`msg-${m.id}`} className="admin-message-card">
+                        <div className="message-header">
+                          <strong>{m.full_name}</strong>
+                          <span className="message-type">Inquiry</span>
+                        </div>
+                        <p>{m.subject}</p>
+                        <div className="message-actions">
+                          <button type="button" className="ghost-button-danger" onClick={() => deleteContactMessage(m.id)}>Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                    {volunteerRequests.map((v) => (
+                      <div key={`vol-${v.id}`} className="admin-message-card">
+                        <div className="message-header">
+                          <strong>{v.full_name}</strong>
+                          <span className="message-type volunteer">Volunteer</span>
+                        </div>
+                        <p>Applied for skills: {v.skills}</p>
+                        <div className="message-actions">
+                          <button type="button" className="ghost-button-danger" onClick={() => deleteVolunteerRequest(v.id)}>Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                    {!contactMessages.length && !volunteerRequests.length && (
+                      <div className="empty-state-small">Your inbox is clear.</div>
+                    )}
+                  </div>
+                </div>
               </div>
             </section>
           )}
-
-
-          <section className="admin-section">
-            <form onSubmit={handleSubmitWorkshop} className="modern-form">
-              <h3>Submit a new program</h3>
-              <p>
-                Logged in as: <strong>{authData.email}</strong>
-              </p>
-              <select
-                value={newWorkshop.type}
-                onChange={(e) => setNewWorkshop({ ...newWorkshop, type: e.target.value })}
-                required
-                style={{
-                  width: '100%', borderRadius: '16px', border: '1px solid var(--border)',
-                  background: 'var(--bg-strong)', padding: '13px 15px', color: 'var(--text)'
-                }}
-              >
-                <option value="workshop">Live Program</option>
-                <option value="event">Community Event</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Title"
-                value={newWorkshop.title}
-                onChange={(e) => setNewWorkshop({ ...newWorkshop, title: e.target.value })}
-                required
-              />
-              <input
-                type="text"
-                placeholder="Institute Name or Organizer"
-                value={newWorkshop.institute_name}
-                onChange={(e) => setNewWorkshop({ ...newWorkshop, institute_name: e.target.value })}
-                required
-              />
-              <input
-                type="text"
-                placeholder="Category"
-                value={newWorkshop.category}
-                onChange={(e) => setNewWorkshop({ ...newWorkshop, category: e.target.value })}
-                required
-              />
-              <input
-                type="date"
-                value={newWorkshop.date}
-                onChange={(e) => setNewWorkshop({ ...newWorkshop, date: e.target.value })}
-                required
-              />
-              <input
-                type="text"
-                placeholder="Location"
-                value={newWorkshop.location}
-                onChange={(e) => setNewWorkshop({ ...newWorkshop, location: e.target.value })}
-                required
-              />
-              <input
-                type="text"
-                placeholder="Contact Number"
-                value={newWorkshop.contact_no}
-                onChange={(e) => setNewWorkshop({ ...newWorkshop, contact_no: e.target.value })}
-              />
-              <textarea
-                placeholder="Description"
-                value={newWorkshop.description}
-                onChange={(e) => setNewWorkshop({ ...newWorkshop, description: e.target.value })}
-                required
-              />
-              <div className="button-row">
-                <button type="submit" className="submit-btn" disabled={isSubmitting} aria-label={isEditing ? 'Update Program' : 'Submit program for review'}>
-                  {isSubmitting ? 'Processing...' : isEditing ? 'Update Program' : 'Send for Review'}
-                </button>
-                {isEditing && (
-                  <button
-                    type="button"
-                    className="nav-btn"
-                    aria-label="Cancel program submission"
-                    style={{ backgroundColor: '#dc2626' }}
-                    onClick={cancelEdit}
-                  >
-                    Cancel
-                  </button>
-                )}
-              </div>
-            </form>
-          </section>
-        </main>
+        </div>
       )}
 
-      <footer className="professional-footer">
+      {showAuthModal && (
+        <div className="modal-overlay" onClick={() => setShowAuthModal(false)}>
+          <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="modal-close" onClick={() => setShowAuthModal(false)}>×</button>
+            <div className="auth-copy">
+              <h3>{showRegister ? 'Register' : 'Sign In'}</h3>
+              <p>{showRegister ? 'Create your account to get started.' : 'Welcome back! Please enter your details.'}</p>
+            </div>
+            <form className="auth-form" onSubmit={handleAuthSubmit}>
+              {showRegister && (
+                <input
+                  type="text"
+                  placeholder="Organization Name"
+                  value={authData.ngo_name}
+                  onChange={(e) => setAuthData({ ...authData, ngo_name: e.target.value })}
+                  required
+                />
+              )}
+              <input
+                type="email"
+                placeholder="Email Address"
+                value={authData.email}
+                onChange={(e) => setAuthData({ ...authData, email: e.target.value })}
+                required
+              />
+              <div className="password-wrap" style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
+                  value={authData.password}
+                  onChange={(e) => setAuthData({ ...authData, password: e.target.value })}
+                  required
+                  style={{ paddingRight: '45px' }}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '15px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--accent)',
+                    fontWeight: 'bold',
+                    fontSize: '0.85rem',
+                    padding: '5px'
+                  }}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <button type="submit" className="button-primary stretch" disabled={isBusy}>
+                {isBusy ? 'Processing...' : (showRegister ? 'Register' : 'Login')}
+              </button>
+            </form>
+            <button type="button" className="inline-switch" onClick={() => setShowRegister(!showRegister)}>
+              {showRegister ? 'Already have an account? Sign in.' : 'Need an NGO account? Register.'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <footer className="site-footer">
         <div className="footer-content">
           <div className="footer-brand">
-            <h3 style={{ color: 'var(--primary)' }}>SkillUp Connect</h3>
-            <p style={{ color: 'var(--muted)', marginTop: '12px', lineHeight: '1.6' }}>
-              Building trust through community action. A secure platform dedicated to verifiable impact, educational resource access, and inclusive growth.
-            </p>
+            <strong>SkillUp Connect</strong>
+            <p>Empowering local communities through organized upskilling and collaboration.</p>
           </div>
-          <div className="footer-links-section">
-            <h4 style={{ marginBottom: '16px' }}>Quick Links</h4>
-            <div className="footer-links">
-              <button type="button" aria-label="Scroll to About Us" onClick={() => scrollToSection(aboutRef)}>About Us</button>
-              <button type="button" aria-label="Scroll to Live Programs" onClick={() => scrollToSection(programsRef)}>Live Programs</button>
-              <button type="button" aria-label="Get in Touch" onClick={() => { setView('home'); setShowContactSection(true); window.setTimeout(() => contactRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}>Get in Touch</button>
-            </div>
-          </div>
+
           <div className="footer-contact">
-            <h4 style={{ marginBottom: '16px' }}>Get In Touch</h4>
-            <p style={{ marginBottom: '8px' }}>Email: adminskilup@gmail.com</p>
-            <p>WhatsApp: +91 94217 89605</p>
+            <h4>Contact Details</h4>
+            <p><strong>Admin Email:</strong> {ADMIN_EMAIL}</p>
+            <p><strong>Support:</strong> +91 91234 56789</p>
+          </div>
+
+          <div className="footer-links">
+            <h4>Quick Links</h4>
+            <button type="button" onClick={() => scrollToSection(programsRef)}>Programs</button>
+            <button type="button" onClick={() => setShowContactModal(true)}>Get in Touch</button>
+            {!currentUser && <button type="button" onClick={() => setShowAuthModal(true)}>Login</button>}
           </div>
         </div>
         <div className="footer-bottom">
-          <p style={{ color: 'var(--muted)', margin: 0, fontSize: '0.9rem', textAlign: 'center' }}>
-            &copy; {new Date().getFullYear()} SkillUp Connect. All rights reserved.
-          </p>
+          <p>&copy; {new Date().getFullYear()} SkillUp Connect. All rights reserved.</p>
         </div>
       </footer>
     </div>
@@ -1364,4 +1542,6 @@ function App() {
 }
 
 export default App;
+
+
 
