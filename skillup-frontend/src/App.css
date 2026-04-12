@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap');
+/* Fonts loaded via preload in index.html for non-blocking rendering */
 
 :root {
   --bg: #f6efe7;
@@ -51,6 +51,8 @@ body {
     radial-gradient(circle at top right, rgba(240, 187, 99, 0.28), transparent 28%),
     linear-gradient(180deg, #fbf6ef 0%, #f6efe7 32%, #f2e9df 100%);
   min-height: 100vh;
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
@@ -694,6 +696,8 @@ a {
   gap: 12px;
   padding: 18px;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  will-change: transform;
+  contain: layout style;
 }
 
 .program-card:hover,

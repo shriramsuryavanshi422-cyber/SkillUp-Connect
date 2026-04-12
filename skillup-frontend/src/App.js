@@ -172,7 +172,7 @@ const ProgramCard = memo(({ item, type, onOpen, onEdit, onDelete, onApprove, can
       <div className="program-card-top">
         {item.logoUrl && (
           <div className="card-logo-container">
-            <img src={item.logoUrl} alt={`${item.name || item.title} logo`} className="card-logo" onError={(e) => e.target.style.display = 'none'} />
+            <img src={item.logoUrl} alt={`${item.name || item.title} logo`} className="card-logo" loading="lazy" onError={(e) => e.target.style.display = 'none'} />
           </div>
         )}
         <div className="card-header-info">
@@ -261,7 +261,7 @@ const DetailModal = memo(({ item, onClose, onContact }) => {
         <div className="modal-header">
           {item.logoUrl && (
             <div className="modal-logo-container">
-              <img src={item.logoUrl} alt={`${item.name || item.title} logo`} className="modal-logo" onError={(e) => e.target.style.display = 'none'} />
+              <img src={item.logoUrl} alt={`${item.name || item.title} logo`} className="modal-logo" loading="lazy" onError={(e) => e.target.style.display = 'none'} />
             </div>
           )}
           <div className="modal-title-area">
@@ -585,7 +585,8 @@ function App() {
 
     let active = true;
 
-    const fetchNgos = async () => {
+    // Debounce: wait 400ms after the user stops typing before hitting the API
+    const debounceTimer = window.setTimeout(async () => {
       try {
         const url = `https://partners.every.org/v0.2/search/${encodeURIComponent(deferredSearchTerm)}?apiKey=${EVERY_ORG_API_KEY}`;
         const response = await fetch(url);
@@ -606,10 +607,12 @@ function App() {
       } catch (err) {
         console.error('Every.org fetch error:', err);
       }
-    };
+    }, 400);
 
-    fetchNgos();
-    return () => { active = false; };
+    return () => {
+      active = false;
+      window.clearTimeout(debounceTimer);
+    };
   }, [deferredSearchTerm]);
 
   const combinedPrograms = useMemo(() => {

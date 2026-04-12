@@ -13,9 +13,59 @@ const PORT = Number(process.env.PORT || 5000);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@skillup.com';
 const LOCAL_STORE_PATH = path.join(__dirname, 'data', 'local-store.json');
 
+// ─── In-memory response cache ────────────────────────────────────────
+const responseCache = new Map();
+const CACHE_TTL_MS = 30_000; // 30 seconds
+
+function getCached(key) {
+  const entry = responseCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL_MS) {
+    responseCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCache(key, data) {
+  responseCache.set(key, { data, ts: Date.now() });
+}
+
+function invalidateCache(...prefixes) {
+  for (const [key] of responseCache) {
+    if (prefixes.some(p => key.startsWith(p))) {
+      responseCache.delete(key);
+    }
+  }
+}
+
 const app = express();
+
+// ─── Middleware ──────────────────────────────────────────────────────
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '256kb' }));
+
+// Inline gzip compression (no extra dependency)
+const zlib = require('zlib');
+app.use((req, res, next) => {
+  const acceptEncoding = req.headers['accept-encoding'] || '';
+  if (!acceptEncoding.includes('gzip')) return next();
+
+  const originalJson = res.json.bind(res);
+  res.json = (body) => {
+    const raw = JSON.stringify(body);
+    // Only compress if payload is worth it (> 1 KB)
+    if (raw.length < 1024) return originalJson(body);
+
+    zlib.gzip(Buffer.from(raw), (err, compressed) => {
+      if (err) return originalJson(body);
+      res.setHeader('Content-Encoding', 'gzip');
+      res.setHeader('Content-Type', 'application/json');
+      res.end(compressed);
+    });
+  };
+  next();
+});
 
 let db = null;
 let dataMode = 'local';
@@ -571,6 +621,7 @@ app.get('/api/health', async (req, res) => {
     await ensureLocalStore();
   }
 
+  res.setHeader('Cache-Control', 'public, max-age=10');
   res.json({
     message: 'SkillUp Connect API is running',
     mode: dataMode,
@@ -587,6 +638,12 @@ app.post('/api/notify', async (req, res) => {
 
 app.get('/api/workshops', async (req, res) => {
   try {
+    const cached = getCached('workshops');
+    if (cached) {
+      res.setHeader('Cache-Control', 'public, max-age=15');
+      return res.json(cached);
+    }
+
     const results = await runWithStorage(
       async () => {
         const [rows] = await db.query("SELECT * FROM workshops WHERE status = 'approved' ORDER BY event_date ASC, created_at DESC");
@@ -598,6 +655,8 @@ app.get('/api/workshops', async (req, res) => {
       }
     );
 
+    setCache('workshops', results);
+    res.setHeader('Cache-Control', 'public, max-age=15');
     res.json(results);
   } catch (error) {
     res.status(500).json({ error: 'Failed to load workshops.' });
@@ -735,6 +794,7 @@ app.delete('/api/events/:id', async (req, res) => {
           store.events = store.events.filter((item) => item.id !== Number(id));
         })
     );
+    invalidateCache('events', 'impact-stats');
     res.json({ success: true, message: 'Event deleted successfully.' });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to delete event.' });
@@ -781,6 +841,7 @@ app.post('/api/workshops', async (req, res) => {
       message: `A new workshop proposal "${title}" has been submitted by ${institute_name} for ${date} at ${location}.`
     }).catch(err => console.error('Background notification failed:', err));
 
+    invalidateCache('workshops', 'impact-stats');
     res.json({ success: true, message: 'Workshop added successfully and is waiting for approval.' });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to save workshop.' });
@@ -821,6 +882,7 @@ app.put('/api/workshops/:id', async (req, res) => {
         })
     );
 
+    invalidateCache('workshops', 'impact-stats');
     res.json({ message: 'Workshop updated successfully.' });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Failed to update workshop.' });
@@ -841,6 +903,7 @@ app.delete('/api/workshops/:id', async (req, res) => {
         })
     );
 
+    invalidateCache('workshops', 'impact-stats');
     res.json({ success: true, message: 'Workshop deleted successfully.' });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to delete workshop.' });
@@ -865,6 +928,7 @@ app.put(['/api/admin/approve/:id', '/api/workshops/:id/approve'], async (req, re
         })
     );
 
+    invalidateCache('workshops', 'impact-stats');
     res.json({ message: 'Workshop approved successfully.' });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Failed to approve workshop.' });
@@ -1373,29 +1437,39 @@ app.get('/api/testimonials', async (req, res) => {
 
 app.get('/api/impact-stats', async (req, res) => {
   try {
+    const cached = getCached('impact-stats');
+    if (cached) {
+      res.setHeader('Cache-Control', 'public, max-age=30');
+      return res.json(cached);
+    }
+
     const stats = await runWithStorage(
       async () => {
-        const [[workshopRow]] = await db.query("SELECT COUNT(*) AS total FROM workshops WHERE status = 'approved'");
-        const [[volunteerRow]] = await db.query('SELECT COUNT(*) AS total FROM volunteers');
-        const [[donationRow]] = await db.query('SELECT COALESCE(SUM(amount), 0) AS total FROM donations');
-        const [[contactRow]] = await db.query('SELECT COUNT(*) AS total FROM contacts');
+        // Single combined query instead of 4 separate round-trips
+        const [[row]] = await db.query(`
+          SELECT
+            (SELECT COUNT(*) FROM workshops WHERE status = 'approved') AS workshopsPublished,
+            (SELECT COUNT(*) FROM volunteers) AS volunteersJoined,
+            (SELECT COALESCE(SUM(amount), 0) FROM donations) AS donationsRaised,
+            (SELECT COUNT(*) FROM contacts) AS messagesReceived
+        `);
 
-        const workshopsPublished = toNumber(workshopRow.total);
-        const volunteersJoined = toNumber(volunteerRow.total);
-        const donationsRaised = toNumber(donationRow.total);
-        const messagesReceived = toNumber(contactRow.total);
+        const workshopsPublished = toNumber(row.workshopsPublished);
+        const volunteersJoined = toNumber(row.volunteersJoined);
 
         return {
           workshopsPublished,
           volunteersJoined,
-          donationsRaised,
-          messagesReceived,
+          donationsRaised: toNumber(row.donationsRaised),
+          messagesReceived: toNumber(row.messagesReceived),
           estimatedLivesTouched: workshopsPublished * 35 + volunteersJoined * 5,
         };
       },
       async () => getImpactStatsFromLocalStore()
     );
 
+    setCache('impact-stats', stats);
+    res.setHeader('Cache-Control', 'public, max-age=30');
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: 'Failed to load impact stats.' });
