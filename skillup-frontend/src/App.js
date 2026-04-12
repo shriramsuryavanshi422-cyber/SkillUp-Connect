@@ -6,7 +6,7 @@ import { sendNotification } from './utils/notify';
 
 const API_BASE = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}/api`;
 const ADMIN_EMAIL = 'adminskilup@gmail.com';
-const DEMO_ADMIN_PASSWORD = 'admin123';
+
 
 const emptyAuth = {
   ngo_name: '',
@@ -32,13 +32,6 @@ const emptyContactForm = {
   message: '',
 };
 
-const emptyVolunteerForm = {
-  full_name: '',
-  email: '',
-  phone: '',
-  skills: '',
-  message: '',
-};
 
 const defaultStats = {
   workshopsPublished: 0,
@@ -129,32 +122,12 @@ function formatDate(value) {
   });
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0));
-}
-
-function formatNumber(value) {
-  return new Intl.NumberFormat().format(Number(value || 0));
-}
-
 function getProgramDate(item) {
   return item.event_date || item.date || '';
 }
 
 function getProgramType(item) {
   return item.type || (item.badge ? 'event' : 'workshop');
-}
-
-function toInputDate(value) {
-  if (!value) {
-    return '';
-  }
-
-  return String(value).slice(0, 10);
 }
 
 function isFutureOrToday(value) {
@@ -408,7 +381,7 @@ const ContactModal = memo(({ isOpen, onClose, formData, setFormData, onSubmit, i
 function App() {
   const [workshops, setWorkshops] = useState([]);
   const [events, setEvents] = useState([]);
-  const [testimonials, setTestimonials] = useState([]);
+  const [, setTestimonials] = useState([]);
   const [impactStats, setImpactStats] = useState(defaultStats);
   const [ngos, setNgos] = useState([]);
   const [pendingPrograms, setPendingPrograms] = useState([]);
@@ -418,12 +391,12 @@ function App() {
   const [contactMessages, setContactMessages] = useState([]);
   const [volunteerRequests, setVolunteerRequests] = useState([]);
 
-  const [statusMode, setStatusMode] = useState('loading');
+  const [, setStatusMode] = useState('loading');
   const [loading, setLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
   const [contactSubmitting, setContactSubmitting] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
-  const [volunteerSubmitting, setVolunteerSubmitting] = useState(false);
+
 
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -435,7 +408,7 @@ function App() {
   const [showPassword, setShowPassword] = useState(false);
   const [authData, setAuthData] = useState(emptyAuth);
   const [contactForm, setContactForm] = useState(emptyContactForm);
-  const [volunteerForm, setVolunteerForm] = useState(emptyVolunteerForm);
+
   const [programForm, setProgramForm] = useState(emptyProgramForm);
   const [editingTarget, setEditingTarget] = useState(null);
   const [toast, setToast] = useState({ message: '', tone: 'info' });
@@ -453,10 +426,7 @@ function App() {
   const heroRef = useRef(null);
   const aboutRef = useRef(null);
   const programsRef = useRef(null);
-  const impactRef = useRef(null);
-  const volunteerRef = useRef(null);
-  const contactRef = useRef(null);
-  const portalRef = useRef(null);
+
   const systemRef = useRef(null);
 
   const isAdmin = currentUser?.email === ADMIN_EMAIL || currentUser?.email === 'adminskilup@gmail.com';
@@ -605,7 +575,7 @@ function App() {
     return () => {
       active = false;
     };
-  }, [currentUser?.email, refreshAdminData, refreshPublicData, showToast]);
+  }, [currentUser?.email, isAdmin, refreshAdminData, refreshPublicData, showToast]);
 
   useEffect(() => {
     if (!deferredSearchTerm || deferredSearchTerm.length < 3) {
