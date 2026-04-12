@@ -370,7 +370,7 @@ const ContactModal = memo(({ isOpen, onClose, formData, setFormData, onSubmit, i
             }}
           />
           <button type="submit" className="button-primary stretch" disabled={isSubmitting}>
-            {isSubmitting ? 'Sending...' : 'Send Message'}
+            Send Message
           </button>
         </form>
       </div>
@@ -1444,7 +1444,7 @@ function App() {
                 </button>
               </div>
               <button type="submit" className="button-primary stretch" disabled={isBusy}>
-                {isBusy ? 'Processing...' : (showRegister ? 'Register' : 'Login')}
+                {showRegister ? 'Register' : 'Login'}
               </button>
             </form>
             <button type="button" className="inline-switch" onClick={() => setShowRegister(!showRegister)}>
